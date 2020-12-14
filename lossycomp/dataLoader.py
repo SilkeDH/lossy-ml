@@ -7,7 +7,7 @@ from tensorflow import keras
 from lossycomp.constants import Region, REGIONS
 
 
-class DataGeneratorAll(keras.utils.Sequence):
+class DataGenerator(keras.utils.Sequence):
     def __init__(self, data, leads,  mean, std, batch_size=10, shuffle=True, load=True):
         """
         Data generator.
@@ -34,7 +34,6 @@ class DataGeneratorAll(keras.utils.Sequence):
         self.data = (self.data - self.mean) / self.std
 
         self.check_chunks()
-        
         subset = self.data.isel(
             time = slice(None, self.data.time.size - self.leads["time"]),
             #level = slice(None, self.data.level.size - self.leads["level"]), #TODO: Chunks == input.
@@ -45,7 +44,6 @@ class DataGeneratorAll(keras.utils.Sequence):
         self.subset_shape = subset.time.size, subset.level.size, subset.latitude.size, subset.longitude.size
                 
         self.subset_length = int(np.prod(self.subset_shape))
-        
         self.on_epoch_end()
 
         if load: print('Loading data into RAM'); self.data.load()
