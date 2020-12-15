@@ -1,7 +1,7 @@
 # Lossy Compresion Algorithm for Climate Data
 
 <p align=center>
-  <img src="figures/planet_erde.png" />
+  <img src="figures/planet-erde.png" />
 </p>
 
 ## Dataset

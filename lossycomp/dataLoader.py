@@ -24,7 +24,7 @@ class DataGenerator(keras.utils.Sequence):
             std: Standart deviation from dataset.
         """
         self.data = data
-        self.samples = num_samples
+        self.num_samples = num_samples
         self.mean = mean
         self.std = std
         self.batch_size = batch_size
@@ -52,7 +52,7 @@ class DataGenerator(keras.utils.Sequence):
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return int(self.samples/self.batch_size)
+        return int(self.num_samples/self.batch_size)
 
     def calculateValues(self, ix):
         tix, levix, latix, lonix = np.unravel_index(ix, self.subset_shape)
@@ -73,7 +73,7 @@ class DataGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         'Updates indexes after each epoch'
-        self.idxs = random.sample(range(0, self.subset_length), self.samples)
+        self.idxs = random.sample(range(0, self.subset_length), self.num_samples)
             
     def check_inputs(self):
         assert isinstance(self.data, xr.core.dataarray.DataArray)
