@@ -1,6 +1,7 @@
 """Dataset classes and functions."""
 
 import os
+import random
 import xarray as xr
 import numpy as np
 from tensorflow import keras
@@ -8,25 +9,25 @@ from lossycomp.constants import Region, REGIONS
 
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, data, leads,  mean, std, batch_size=10, shuffle=True, load=True):
+    def __init__(self, data, num_samples, leads, mean, std, batch_size=10, load=True):
         """
-        Data generator.
+        Data generator. The samples generated are shuffled.
         Template from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
         Args:
             data: DataArray
             leads: Determines chunk size on each dimension. 
                    Format dict(time=12, longitude=10, latitude=10, level=1)
-            batch_size: Batch size.
-            shuffle: bool. If True, data is shuffled.
+            num_samples: Int. Number of random lead chunks.
+            batch_size: Int. Batch size.
             load: bool. If True, datadet is loaded into RAM.
             mean: Mean from dataset.
             std: Standart deviation from dataset.
         """
         self.data = data
+        self.samples = num_samples
         self.mean = mean
         self.std = std
         self.batch_size = batch_size
-        self.shuffle = shuffle
         self.leads = leads
         self.check_inputs()
         
@@ -44,13 +45,14 @@ class DataGenerator(keras.utils.Sequence):
         self.subset_shape = subset.time.size, subset.level.size, subset.latitude.size, subset.longitude.size
                 
         self.subset_length = int(np.prod(self.subset_shape))
+        
         self.on_epoch_end()
 
         if load: print('Loading data into RAM'); self.data.load()
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return int(self.subset_length/self.batch_size)
+        return int(self.samples/self.batch_size)
 
     def calculateValues(self, ix):
         tix, levix, latix, lonix = np.unravel_index(ix, self.subset_shape)
@@ -71,9 +73,7 @@ class DataGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         'Updates indexes after each epoch'
-        self.idxs = np.arange(self.subset_length)
-        if self.shuffle == True:
-            np.random.shuffle(self.idxs)
+        self.idxs = random.sample(range(0, self.subset_length), self.samples)
             
     def check_inputs(self):
         assert isinstance(self.data, xr.core.dataarray.DataArray)
