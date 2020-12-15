@@ -144,3 +144,7 @@ def split_data(data, percentage):
     data_test = data.isel(time=np.sort(test_idx))
     return (data_train, data_test)
     
+def norm_data(data, mean, std):
+    norm_data = data * std + mean
+    return (norm_data)
+    

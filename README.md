@@ -1,7 +1,7 @@
 # Lossy Compresion Algorithm for Climate Data
 
 <p align=center>
-  <img src="figures/planet-erde.png" />
+  <img src="figures/planet-erde.png"  width="230" height="230"/>
 </p>
 
 ## Dataset
@@ -42,3 +42,6 @@ Tensorflow
 
 4D Convolutions
 - https://github.com/IceCubeOpenSource/TFScripts/blob/master/tfscripts/layers.py
+
+ZFP
+- https://zfp.readthedocs.io/en/release0.5.5/python.html
