@@ -27,8 +27,8 @@ The compression algorithm is an Autoencoder based one. An autoencoder is a type 
 
 ## Performance
 
-The performance of the presented compression algorithm will be compared with zfp (https://computing.llnl.gov/projects/zfp). 
-zfp is a BSD licensed open-source library for compressed floating-point arrays that support high throughput read and write random access.
+The performance of the presented compression algorithm will be compared with [zfp](https://computing.llnl.gov/projects/zfp) and [fpzip](https://computing.llnl.gov/projects/fpzip). 
+zfp and fpzip are both a BSD licensed open-source library for compressed floating-point arrays that support high throughput read and write random access. However, for lossy compression, the zfp compressor often outperforms fpzip.
 
 ## References
 
@@ -43,5 +43,8 @@ Tensorflow
 4D Convolutions
 - https://github.com/IceCubeOpenSource/TFScripts/blob/master/tfscripts/layers.py
 
-ZFP
+ZFP & FPZIP
 - https://zfp.readthedocs.io/en/release0.5.5/python.html
+- https://pypi.org/project/fpzip/
+- https://www.researchgate.net/publication/6715625_Fast_and_Efficient_Compression_of_Floating-Point_Data
+- https://www.researchgate.net/publication/264417607_Fixed-Rate_Compressed_Floating-Point_Arrays
