@@ -1,5 +1,6 @@
 """Model functions"""
 
+import scipy.signal
 import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
@@ -65,6 +66,7 @@ def Autoencoder(input_shape, filters, kernels, strides, optimizer = keras.optimi
     model.compile(
         optimizer = optimizer,
         loss=tf.keras.losses.MeanSquaredError(),
+        run_eagerly=True
     )
     return model    
     
@@ -159,3 +161,10 @@ def ResAutoencoder():
     )
 
     return model
+
+def r2_coef(y_true, y_pred):
+    SS_res =  keras.backend.sum(keras.backend.square(y_true - y_pred))
+    SS_tot = keras.backend.sum(keras.backend.square(y_true-keras.backend.mean(y_true)))
+    return ( 1 - SS_res/(SS_tot + keras.backend.epsilon()) )
+    
+    
