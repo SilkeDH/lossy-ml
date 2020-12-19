@@ -2,36 +2,20 @@
 
 import matplotlib.pyplot as plt
 
-def plot_loss(history, title, x_title, y_title):
+def plot_history(history, variable, title, x_title, y_title):
     """Plots training and validation loss curves"""
-    loss = history.history['loss']
-    val_loss = history.history['val_loss']
+    loss = history.history[variable]
+    val_loss = history.history['val_' + variable]
     epochs = range(1, len(loss) + 1)
     f = plt.figure(figsize=(10,10))
-    plt.plot(epochs, loss, 'r-', label='Training loss')
-    plt.plot(epochs, val_loss, 'g', label='Validation loss')
+    plt.plot(epochs, loss, 'r-', label='Training ' + variable)
+    plt.plot(epochs, val_loss, 'g', label='Validation ' + variable)
     plt.yscale('log')
     plt.title(title)
     plt.xlabel(x_title)
     plt.ylabel(y_title)
     plt.legend()
     plt.show()
-    
-def plot_r2(history, title, x_title, y_title):
-    """Plots training and validation loss curves"""
-    loss = history.history['r2_coef']
-    val_loss = history.history['val_r2_coef']
-    epochs = range(1, len(loss) + 1)
-    f = plt.figure(figsize=(10,10))
-    plt.plot(epochs, loss, 'r-', label='Training r2')
-    plt.plot(epochs, val_loss, 'g', label='Validation r2')
-    plt.yscale('log')
-    plt.title(title)
-    plt.xlabel(x_title)
-    plt.ylabel(y_title)
-    plt.legend()
-    plt.show()
-    
 
 def single_plot(data, time, title):
     """Single lat-lon plot
