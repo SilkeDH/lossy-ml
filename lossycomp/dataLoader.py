@@ -63,6 +63,8 @@ class DataGenerator(keras.utils.Sequence):
             time = slice(tix, tix + self.leads["time"]),
         )
         whole = self.data.isel(**subset_selection)
+        #lat = np.array([whole.latitude,]* len(whole.longitude)).transpose()
+        #lon = np.array([whole.latitude,]*len(whole.latitude)).transpose()
         return whole
     
     def __getitem__(self, i):
