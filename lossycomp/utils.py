@@ -18,7 +18,7 @@ def mem_limit():
 
 def decay_schedule(epoch, lr):
     """Learning rate decay scheduler"""
-    # decay by 0.1 every 5 epochs; use `% 1` to decay after each epoch
+    # decay by 0.1 every 20 epochs; use `% 1` to decay after each epoch
     if (epoch == 20):
         lr = lr * 0.1
     return lr

@@ -26,7 +26,7 @@ def single_plot(data, time, title):
     title: Sets plot title.
     """
     fig, ax = plt.subplots()
-    bb = plt.imshow(data[0,time,:,:,0],  cmap='viridis')
+    bb = plt.imshow(data[0,time,:,:,0], interpolation='none', cmap='viridis')
     fig.colorbar(bb, orientation='vertical')
     plt.title(title)
     plt.ylabel("Latitude")
@@ -51,7 +51,7 @@ def mult_plot(data, rows, columns, title, min, max, cmap = 'viridis'):
     for i in range(rows):
         for j in range(columns):
             img = data[0,count,:,:,0] 
-            im = ax[i, j].imshow(img,  vmin=min, vmax=max, cmap = cmap)
+            im = ax[i, j].imshow(img,  vmin=min, vmax=max, interpolation='none', cmap = cmap)
             count=count +1
     fig.subplots_adjust(right=0.8)
     fig.suptitle(title)
