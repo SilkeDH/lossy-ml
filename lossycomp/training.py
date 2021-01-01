@@ -19,27 +19,27 @@ from tensorflow.keras.optimizers import Adam
 ap = argparse.ArgumentParser()
 ap.add_argument("-r", "--region", type=str, default="europe",
 	help="Region to be trained on.")
-ap.add_argument("-e", "--epochs", type=int, default=100,
+ap.add_argument("-e", "--epochs", type=int, default=500,
 	help="Number of epochs.")
-ap.add_argument("-v", "--verbose", type=boolean, default=False,
-	help="Verbosing.")
-ap.add_argument("-o", "--output", type=str, default="model_4_layers",
+#ap.add_argument("-v", "--verbose", type=boolean, default=False,
+#	help="Verbosing.")
+ap.add_argument("-o", "--output", type=str, default="model_4",
 	help="Directory name where results will be saved.")
 args = vars(ap.parse_args())
 
 # create dir
-if not(path.exists('results/'+args["output"])):
+if not(os.path.exists('results/'+args["output"])):
     os.mkdir('results/'+args["output"])
     os.mkdir('results/'+args["output"]+'/weights')
 
 # Load model
-model = Autoencoder((16, 48, 48, 1), [10, 20, 20,20], [4, 4, 4, 4], [2, 2, 2, 2])
+model = Autoencoder((16, 48, 48, 1), [10, 20, 20, 20], [4, 4, 4, 4], [2, 2, 2, 2])
 
 # Get model info.
 model.summary()
 
 #Compile model.
-model.compile(optimizer = Adam(lr=0.01), loss=tf.keras.losses.MeanSquaredError(), metrics=[r2_coef, 'MAE'])
+model.compile(optimizer = Adam(lr=0.001), loss=tf.keras.losses.MeanSquaredError(), metrics=[r2_coef, 'MAE'])
 
 dask.config.set(**{'array.slicing.split_large_chunks': False})
 
@@ -55,11 +55,11 @@ z, mean, std = data_preprocessing(file, var, region)
 train, test = split_data(z, 0.70)
 
 # Set chunk size.
-leads = dict(time = 16, longitude=48, latitude=48, level=1)
+leads = dict(time = 16, longitude=40, latitude=40, level=1)
 
 # Config
 batch_size = 100
-verbose = args["verbose"]
+verbose = False
 nb_epochs = args["epochs"]
 model_weights = 'params_model_epoch_'
 
@@ -88,7 +88,7 @@ for epoch in range(nb_epochs):
             progress_bar.update(index + 1)
         else:
             if index % 100 == 0:
-                print('processed {}/{} batches'.format(index + 1, nb_batches))
+                print('processed {}/{} batches'.format(index, nb_batches))
 
         train_batch = dg_train.__getitem__(index)
 
@@ -100,7 +100,7 @@ for epoch in range(nb_epochs):
     train_history['test'].append(test_hist)
     
     # set learning rate
-    if (epoch != 0 and epoch % 5 == 0):
+    if (epoch != 0 and epoch % 20 == 0):
         mean_loss_3 = (train_history['train'][-1]['loss'] + train_history['train'][-2]['loss'] + train_history['train'][-3]['loss']) / 3
         mean_loss_4 = (train_history['train'][-2]['loss'] + train_history['train'][-3]['loss'] + train_history['train'][-4]['loss']) / 3
         if mean_loss_3 > mean_loss_4:
@@ -155,7 +155,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Mean Squared Error (MSE)')
 plt.title('Training vs Test loss')
 plt.legend()
-plt.savefig('results/'+args["output"]+'loss.pdf')
+plt.savefig('results/'+args["output"]+'/loss.pdf')
 
 plt.figure(1)
 plt.plot(epochs, r2, label = "train")
@@ -164,7 +164,7 @@ plt.xlabel('Epochs')
 plt.ylabel('R2')
 plt.title('Training vs Test R2')
 plt.legend()
-plt.savefig('results/'+args["output"]+'r2.pdf')
+plt.savefig('results/'+args["output"]+'/r2.pdf')
 
 plt.figure(2)
 plt.plot(epochs, mae, label = "train")
@@ -173,4 +173,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Mean Absolute Error (MAE)')
 plt.title('Training vs Test MAE')
 plt.legend()
-plt.savefig('results/'+args["output"]+'mae.pdf')
+plt.savefig('results/'+args["output"]+'/mae.pdf')
