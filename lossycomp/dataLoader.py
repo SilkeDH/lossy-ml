@@ -9,7 +9,7 @@ from lossycomp.constants import Region, REGIONS
 
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, data, num_samples, leads, mean, std, batch_size=10, load=True):
+    def __init__(self, data, num_samples, leads, mean, std, batch_size=10, coords = False, load=True):
         """
         Data generator. The samples generated are shuffled.
         Template from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
@@ -21,6 +21,7 @@ class DataGenerator(keras.utils.Sequence):
             batch_size: Int. Batch size.
             load: bool. If True, datadet is loaded into RAM.
             mean: Mean from dataset.
+            coords: Include coordinates information.
             std: Standart deviation from dataset.
         """
         self.data = data
@@ -63,14 +64,25 @@ class DataGenerator(keras.utils.Sequence):
             time = slice(tix, tix + self.leads["time"]),
         )
         whole = self.data.isel(**subset_selection)
-        #lat = np.array([whole.latitude,]* len(whole.longitude)).transpose()
-        #lon = np.array([whole.latitude,]*len(whole.latitude)).transpose()
-        return whole
+        whole_data = whole.data
+        
+        # Add coordinates as extra channels.
+        if coords:
+            lat = whole.coords['latitude'].values
+            lon = whole.coords['longitude'].values
+            xx, yy = np.meshgrid(lon, lat)
+            coords_lat = np.concatenate([[xx]] * len(test_data.time), axis=0)
+            coords_lon = np.concatenate([[yy]] * len(test_data.time), axis=0)
+            coords_lat = np.expand_dims(coords_lat, axis=3)
+            coords_lon = np.expand_dims(coords_lon, axis=3)
+            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon),axis = 3)
+            
+        return whole_data
     
     def __getitem__(self, i):
         'Generate one batch of data'
         idxs = self.idxs[i * self.batch_size : (i + 1) * self.batch_size]
-        x = np.stack([self.calculateValues(i).data for i in idxs], axis = 0)
+        x = np.stack([self.calculateValues(i) for i in idxs], axis = 0)
         return x, x
 
     def on_epoch_end(self):
