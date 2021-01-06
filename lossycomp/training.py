@@ -11,19 +11,20 @@ import matplotlib.pyplot as plt
 from collections import OrderedDict, defaultdict
 from keras.callbacks import LearningRateScheduler
 from lossycomp.dataLoader import DataGenerator, data_preprocessing, split_data, norm_data
-from lossycomp.utils import check_gpu, Autoencoder, decay_schedule, r2_coef
+from lossycomp.utils import check_gpu, decay_schedule, r2_coef
 from lossycomp.plots import mult_plot, single_plot, plot_history
 from tensorflow.keras.optimizers import Adam
+from lossycomp.models import Autoencoder
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-r", "--region", type=str, default="europe",
+ap.add_argument("-r", "--region", type=str, default="globe",
 	help="Region to be trained on.")
-ap.add_argument("-e", "--epochs", type=int, default=500,
+ap.add_argument("-e", "--epochs", type=int, default=200,
 	help="Number of epochs.")
 #ap.add_argument("-v", "--verbose", type=boolean, default=False,
 #	help="Verbosing.")
-ap.add_argument("-o", "--output", type=str, default="model_4",
+ap.add_argument("-o", "--output", type=str, default="model",
 	help="Directory name where results will be saved.")
 args = vars(ap.parse_args())
 
@@ -33,7 +34,7 @@ if not(os.path.exists('results/'+args["output"])):
     os.mkdir('results/'+args["output"]+'/weights')
 
 # Load model
-model = Autoencoder((16, 48, 48, 1), [10, 20, 20, 20], [4, 4, 4, 4], [2, 2, 2, 2])
+(encoder, decoder, model) = Autoencoder.build(16, 40, 40, 1, filters = (10, 20))
 
 # Get model info.
 model.summary()

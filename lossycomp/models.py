@@ -6,7 +6,7 @@ import numpy as np
 class Autoencoder:
   @staticmethod
   def build(time, latitude, longitude, channels, filters=(10, 20, 20, 20), kernels = (4, 4, 4, 4), 
-            strides = (2, 2, 2, 2), dropout = 0, latentDim = 180):
+            strides = (2, 2, 2, 2), dropout = 0):
     inputShape = (time, latitude, longitude, channels)
     # Input to the encoder
     inputs = Input(shape=inputShape)
@@ -22,7 +22,7 @@ class Autoencoder:
     encoder = Model(inputs = inputs, outputs = x, name="Encoder")
       
     # Input to the decoder
-    latentInputs = Input(shape=(1,3,3,20))
+    latentInputs = Input(shape=volumeSize[1:])
     x = latentInputs
 
     kernels = np.flipud(kernels)
