@@ -34,7 +34,7 @@ if not(os.path.exists('results/'+args["output"])):
     os.mkdir('results/'+args["output"]+'/weights')
 
 # Load model
-(encoder, decoder, model) = Autoencoder.build(16, 40, 40, 1, filters = (10, 20))
+(encoder, decoder, model) = Autoencoder.build(16, 40, 40, 1, filters = (10, 20, 20))
 
 # Get model info.
 model.summary()

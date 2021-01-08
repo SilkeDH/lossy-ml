@@ -164,6 +164,15 @@ def ResAutoencoder():
 def r2_coef(y_true, y_pred):
     SS_res =  keras.backend.sum(keras.backend.square(y_true - y_pred))
     SS_tot = keras.backend.sum(keras.backend.square(y_true-keras.backend.mean(y_true)))
-    return ( 1 - SS_res/(SS_tot + keras.backend.epsilon()) )
+    return ( 1 - SS_res/(SS_tot + keras.backend.epsilon()))
     
+def calculate_MSE(y_true, y_pred):
+    return np.mean((y_true - y_pred)**2)
     
+def calculate_MAE(y_true, y_pred):
+    return np.sum(np.absolute(y_true - y_pred))
+
+def calculate_R2(y_true, y_pred):
+    SS_res =  np.sum(np.square(y_true - y_pred))
+    SS_tot = np.sum(np.square(y_true-np.mean(y_true)))
+    return ( 1 - SS_res/(SS_tot +keras.backend.epsilon()))
