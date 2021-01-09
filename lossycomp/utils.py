@@ -7,6 +7,8 @@ from tensorflow import Tensor
 import tensorflow.keras as keras
 from keras.layers import Input, Conv3D, Conv3DTranspose, Dropout
 from keras.models import Model
+import h5py
+import keras.backend as K
 
 def check_gpu():
     """Check which GPUS are available."""
@@ -68,8 +70,42 @@ def Autoencoder(input_shape, filters, kernels, strides, optimizer = keras.optimi
         run_eagerly=True
     )
     return model    
+
+def r2_coef(y_true, y_pred):
+    SS_res =  keras.backend.sum(keras.backend.square(y_true - y_pred))
+    SS_tot = keras.backend.sum(keras.backend.square(y_true-keras.backend.mean(y_true)))
+    return ( 1 - SS_res/(SS_tot + keras.backend.epsilon()))
     
+def calculate_MSE(y_true, y_pred):
+    """Calculates de MSE
+    Args:
+    =======
+    y_true: real value.
+    y_pred: predicted value."""
+    return np.mean((y_true - y_pred)**2)
     
+def calculate_MAE(y_true, y_pred):
+    """Calculates de MAE
+    Args:
+    =======
+    y_true: real value.
+    y_pred: predicted value."""
+    return np.sum(np.absolute(y_true - y_pred))
+
+def calculate_R2(y_true, y_pred):
+    """Calculates de R2
+    Args:
+    =======
+    y_true: real value.
+    y_pred: predicted value."""
+    SS_res =  np.sum(np.square(y_true - y_pred))
+    SS_tot = np.sum(np.square(y_true-np.mean(y_true)))
+    return ( 1 - SS_res/(SS_tot +keras.backend.epsilon()))
+
+
+"""  This residual Autoencoder hasn't been tested yet.
+======================
+
 def residual_block(x: Tensor, filters: int, kernel_size = (3, 3, 3)) -> Tensor:
     y = Conv3D(kernel_size=kernel_size, strides= 1, filters=filters, padding="same")(x)
     y = ReLU()(y)
@@ -160,19 +196,4 @@ def ResAutoencoder():
     )
 
     return model
-
-def r2_coef(y_true, y_pred):
-    SS_res =  keras.backend.sum(keras.backend.square(y_true - y_pred))
-    SS_tot = keras.backend.sum(keras.backend.square(y_true-keras.backend.mean(y_true)))
-    return ( 1 - SS_res/(SS_tot + keras.backend.epsilon()))
-    
-def calculate_MSE(y_true, y_pred):
-    return np.mean((y_true - y_pred)**2)
-    
-def calculate_MAE(y_true, y_pred):
-    return np.sum(np.absolute(y_true - y_pred))
-
-def calculate_R2(y_true, y_pred):
-    SS_res =  np.sum(np.square(y_true - y_pred))
-    SS_tot = np.sum(np.square(y_true-np.mean(y_true)))
-    return ( 1 - SS_res/(SS_tot +keras.backend.epsilon()))
+"""

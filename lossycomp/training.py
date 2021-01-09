@@ -34,7 +34,7 @@ if not(os.path.exists('results/'+args["output"])):
     os.mkdir('results/'+args["output"]+'/weights')
 
 # Load model
-(encoder, decoder, model) = Autoencoder.build(16, 40, 40, 1, filters = (10, 20, 20))
+(encoder, decoder, model) = Autoencoder.build(16, 48, 48, 1, filters = (10, 20, 20,20))
 
 # Get model info.
 model.summary()
@@ -56,7 +56,7 @@ z, mean, std = data_preprocessing(file, var, region)
 train, test = split_data(z, 0.70)
 
 # Set chunk size.
-leads = dict(time = 16, longitude=40, latitude=40, level=1)
+leads = dict(time = 16, longitude=48, latitude=48, level=1)
 
 # Config
 batch_size = 100
