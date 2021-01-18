@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow import Tensor
 import tensorflow.keras as keras
 from keras.layers import Input, Conv3D, Conv3DTranspose, Dropout
+from keras.layers import LeakyReLU, ReLU, Add
 from keras.models import Model
 import h5py
 import keras.backend as K
@@ -71,10 +72,40 @@ def Autoencoder(input_shape, filters, kernels, strides, optimizer = keras.optimi
     )
     return model    
 
+def psnr(y_true, y_pred):
+    psnr = tf.math.log(1 / tf.sqrt(tf.reduce_mean(tf.square(y_true - y_pred)))) / tf.math.log(10.0) * 20
+    return psnr
+
+def ssim_loss(y_true, y_pred):
+    return 1 - tf.reduce_mean(tf.image.ssim(y_true, y_pred, 1.0))
+
+def ssim(y_true, y_pred):
+    return tf.reduce_mean(tf.image.ssim(y_true, y_pred, 1.0))
+
+def correlation(x, y):    
+    mx = tf.math.reduce_mean(x)
+    my = tf.math.reduce_mean(y)
+    xm, ym = x-mx, y-my
+    r_num = tf.math.reduce_mean(tf.multiply(xm,ym))        
+    r_den = tf.math.reduce_std(xm) * tf.math.reduce_std(ym)
+    return  r_num / (r_den + keras.backend.epsilon())
+
 def r2_coef(y_true, y_pred):
-    SS_res =  keras.backend.sum(keras.backend.square(y_true - y_pred))
-    SS_tot = keras.backend.sum(keras.backend.square(y_true-keras.backend.mean(y_true)))
-    return ( 1 - SS_res/(SS_tot + keras.backend.epsilon()))
+    """Calculates de R2
+    Args:
+    =======
+    y_true: real value.
+    y_pred: predicted value."""
+    #if (y_true.shape != y_pred.shape):
+    #    raise ValueError('Dimensions do not match %s and %s' % (y_true.shape, y_pred.shape))
+    num = keras.backend.sum((y_true-keras.backend.mean(y_true))*(y_pred-keras.backend.mean(y_pred)))
+    div = keras.backend.sqrt(keras.backend.sum((y_true-keras.backend.mean(y_true))*(y_true-keras.backend.mean(y_true))))*keras.backend.sqrt(keras.backend.sum((y_pred-keras.backend.mean(y_pred))*(y_pred-keras.backend.mean(y_pred))))
+    return num/(div + keras.backend.epsilon())
+
+#def r2_coef(y_true, y_pred):
+#    SS_res =  keras.backend.sum(keras.backend.square(y_true - y_pred))
+#    SS_tot = keras.backend.sum(keras.backend.square(y_true-keras.backend.mean(y_true)))
+#    return ( 1 - SS_res/(SS_tot + keras.backend.epsilon()))
     
 def calculate_MSE(y_true, y_pred):
     """Calculates de MSE
@@ -92,19 +123,10 @@ def calculate_MAE(y_true, y_pred):
     y_pred: predicted value."""
     return np.sum(np.absolute(y_true - y_pred))
 
-def calculate_R2(y_true, y_pred):
-    """Calculates de R2
-    Args:
-    =======
-    y_true: real value.
-    y_pred: predicted value."""
-    SS_res =  np.sum(np.square(y_true - y_pred))
-    SS_tot = np.sum(np.square(y_true-np.mean(y_true)))
-    return ( 1 - SS_res/(SS_tot +keras.backend.epsilon()))
-
 
 """  This residual Autoencoder hasn't been tested yet.
 ======================
+"""
 
 def residual_block(x: Tensor, filters: int, kernel_size = (3, 3, 3)) -> Tensor:
     y = Conv3D(kernel_size=kernel_size, strides= 1, filters=filters, padding="same")(x)
@@ -196,4 +218,3 @@ def ResAutoencoder():
     )
 
     return model
-"""

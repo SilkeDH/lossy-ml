@@ -7,7 +7,7 @@ def plot_history(history, variable, title, x_title, y_title):
     loss = history.history[variable]
     val_loss = history.history['val_' + variable]
     epochs = range(1, len(loss) + 1)
-    f = plt.figure(figsize=(10,10))
+    f = plt.figure(figsize=(15,15))
     plt.plot(epochs, loss, 'r-', label='Training ' + variable)
     plt.plot(epochs, val_loss, 'g', label='Validation ' + variable)
     plt.yscale('log')
@@ -17,7 +17,7 @@ def plot_history(history, variable, title, x_title, y_title):
     plt.legend()
     plt.show()
 
-def single_plot(data, time, title):
+def single_plot(data, time, title, subtitle,  min_val, max_val, cmap = 'viridis'):
     """Single lat-lon plot
     Args
     ======
@@ -25,9 +25,10 @@ def single_plot(data, time, title):
     time: Time index to be sliced.
     title: Sets plot title.
     """
-    fig, ax = plt.subplots()
-    bb = plt.imshow(data[0,time,:,:,0], interpolation='none', cmap='viridis')
-    fig.colorbar(bb, orientation='vertical')
+    fig, ax = plt.subplots(figsize=(15,15))
+    bb = plt.imshow(data[0,time,:,:,0], vmin=min_val, vmax=max_val, interpolation='none', cmap=cmap)
+    cbar = fig.colorbar(bb, orientation='horizontal')
+    cbar.set_label(subtitle)
     plt.title(title)
     plt.ylabel("Latitude")
     plt.xlabel("Longitude")
@@ -46,7 +47,7 @@ def mult_plot(data, rows, columns, title, min, max, cmap = 'viridis'):
     cmap: Colorin type of the plot.
     The time index go from 0 to rows*columns.
     """
-    fig, ax = plt.subplots(rows, columns, figsize=(10,10))
+    fig, ax = plt.subplots(rows, columns, figsize=(15,15))
     count = 0
     for i in range(rows):
         for j in range(columns):
@@ -55,8 +56,8 @@ def mult_plot(data, rows, columns, title, min, max, cmap = 'viridis'):
             count=count +1
     fig.subplots_adjust(right=0.8)
     fig.suptitle(title)
-    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    plt.colorbar(im,  cax=cbar_ax)
+    fig.colorbar(im, orientation='horizontal')
+    #plt.colorbar(im,  cax=cbar_ax)
     plt.show()
 
     

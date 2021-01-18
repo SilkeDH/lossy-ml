@@ -1,16 +1,17 @@
 """Compressor"""
 import pickle
+import xarray as xr
 from lossycomp.models import Autoencoder
-from lossycomp.utils import load_weights
+from lossycomp.dataLoader import chunk_data
 
-def compress(filepath, variable):
+def compress(array):
     """ Compression method
     Args:
     =========
-    file: .nc data filepath.
+    file: 4D numpy array.
     Returns a Dataset with the compressed values.
     """
-    with open('../results/model_11/model-history.pkl', 'rb') as f:   #(32,16,8) = 64
+    with open('../results/model_14/model-history.pkl', 'rb') as f:   #(32,16,8) = 64
         data = pickle.load(f)
         
     # Load mean and std.
@@ -18,22 +19,27 @@ def compress(filepath, variable):
     std = data['std']
     
     # Load model architecture.
-    (encoder, decoder, model) = Autoencoder.build(16, 40, 40, 1, filters = (32, 16, 8))
+    (encoder, decoder, model) = Autoencoder.build(16, 48, 48, 1, filters = (10, 20, 20, 40))
     
     # Load weights.
-    load_weights(model, '../results/model_11/weights/params_model_epoch_199.hdf5')
+    model.load_weights('../results/model_14/weights/params_model_epoch_199.hdf5')
     
     # Load only encoder
     encoder = model.layers[1]
     
-    # Load data
-    data = xr.open_mfdataset(filepath, combine='by_coords')
+    # Standardize Data
     
-    # Transpose data.
-    data = data.transpose('time', 'latitude', 'longitude', 'level')
+    array = (array - mean) / (std)
     
-    # TODO: Chunk data.
+    print("Data shape:", array.shape)
     
-    compressed_data = encoder(data).numpy()
+    # Chunk data.
+    chunks, num_chunks = chunk_data(array, (16, 48, 48))
     
-    return compressed_data
+    print("Chunks shape:", chunks.shape ) # Batch, time, lat, lon, level
+    
+    compressed_data = encoder(chunks).numpy()
+    
+    print("Compression factor:", array.nbytes / compressed_data.nbytes)
+    
+    return compressed_data, num_chunks

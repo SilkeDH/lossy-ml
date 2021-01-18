@@ -20,7 +20,7 @@ from lossycomp.models import Autoencoder
 ap = argparse.ArgumentParser()
 ap.add_argument("-r", "--region", type=str, default="globe",
 	help="Region to be trained on.")
-ap.add_argument("-e", "--epochs", type=int, default=200,
+ap.add_argument("-e", "--epochs", type=int, default=300,
 	help="Number of epochs.")
 #ap.add_argument("-v", "--verbose", type=boolean, default=False,
 #	help="Verbosing.")
@@ -34,7 +34,7 @@ if not(os.path.exists('results/'+args["output"])):
     os.mkdir('results/'+args["output"]+'/weights')
 
 # Load model
-(encoder, decoder, model) = Autoencoder.build(16, 48, 48, 1, filters = (10, 20, 20,20))
+(encoder, decoder, model) = Autoencoder.build(16, 48, 48, 1, filters = (10, 20, 20, 20))
 
 # Get model info.
 model.summary()
@@ -72,6 +72,7 @@ dg_test = DataGenerator(test, 20000, leads, batch_size=batch_size, load=True, me
 train_history = defaultdict(list)
 test_history = defaultdict(list)
 
+model.load_weights('results/'+args["output"]+'/weights/{0}{1:03d}.hdf5'.format(model_weights, 199))
 
 def timer(start,end):
     hours, rem = divmod(end-start, 3600)
@@ -130,6 +131,8 @@ for epoch in range(nb_epochs):
 
 end = time.time()
 pickle.dump({'model': train_history, "mean": mean, "std": std, "time": timer(start, end)}, open('results/'+args["output"]+'/model-history.pkl', 'wb'))
+
+"""
 # Saving of plottings
 with open('results/'+args["output"]+'/model-history.pkl', 'rb') as f:
     data = pickle.load(f)
@@ -144,6 +147,7 @@ def get_values(data, mode):
         val3.append(values['MAE'])
     return val1, val2, val3
 
+
 epochs = range(1, 1 + args["epochs"])
 
 loss, r2, mae = get_values(data, 'train')
@@ -152,6 +156,7 @@ val_loss, val_r2, val_mae = get_values(data, 'test')
 plt.figure(0)
 plt.plot(epochs, loss, label = "train")
 plt.plot(epochs, val_loss, label = "test")
+plt.yscale('log')
 plt.xlabel('Epochs')
 plt.ylabel('Mean Squared Error (MSE)')
 plt.title('Training vs Test loss')
@@ -175,3 +180,4 @@ plt.ylabel('Mean Absolute Error (MAE)')
 plt.title('Training vs Test MAE')
 plt.legend()
 plt.savefig('results/'+args["output"]+'/mae.pdf')
+"""

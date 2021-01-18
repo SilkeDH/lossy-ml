@@ -1,16 +1,16 @@
 """Decompressor"""
 import pickle
 from lossycomp.models import Autoencoder
-from lossycomp.utils import load_weights
+from lossycomp.dataLoader import merge_data
 
-def compress(compressed_data):
+def decompress(compressed_data, chunks_size):
     """ Decompression method
     Args:
     =========
     compressed_data: Dataset returned by the compression method.
     Returns the reconstructed data as a Dataset.
     """
-    with open('../results/model_11/model-history.pkl', 'rb') as f:   #(32,16,8) = 64
+    with open('../results/model_14/model-history.pkl', 'rb') as f:   
         data = pickle.load(f)
         
     # Load mean and std.
@@ -18,18 +18,19 @@ def compress(compressed_data):
     std = data['std']
     
     # Load model architecture.
-    (encoder, decoder, model) = Autoencoder.build(16, 40, 40, 1, filters = (32, 16, 8))
+    (encoder, decoder, model) = Autoencoder.build(16, 48, 48, 1, filters = (10, 20, 20, 40))
     
     # Load weights.
-    load_weights(model, '../results/model_11/weights/params_model_epoch_199.hdf5')
+    model.load_weights('../results/model_14/weights/params_model_epoch_199.hdf5')
     
-    # Load only encoder
+    # Load only the dencoder.
     decoder = model.layers[2]
     
-    # Chunk data.
+    decompressed = decoder(compressed_data).numpy()
     
-    decompressed_data = decoder(compressed_data).numpy()
+    # Merge chunks
+    decompressed_data = merge_data(decompressed, chunks_size)
     
-    # TODO: Rebuild the data from the chunks.
+    decompressed_data = (decompressed_data * std) + mean
     
     return decompressed_data

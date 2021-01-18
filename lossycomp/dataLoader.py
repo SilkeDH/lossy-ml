@@ -8,6 +8,7 @@ from tensorflow import keras
 from lossycomp.constants import Region, REGIONS
 from lossycomp.encodings import encode_lat, encode_lon
 
+random.seed(1234)
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, data, num_samples, leads, mean, std, batch_size=10, coords = False, load=True):
@@ -66,7 +67,7 @@ class DataGenerator(keras.utils.Sequence):
             time = slice(tix, tix + self.leads["time"]),
         )
         whole = self.data.isel(**subset_selection)
-        whole_data = whole.data
+        #whole_data = whole.data
         
         # Add coordinates as extra channels.
         if self.coords:
@@ -87,14 +88,29 @@ class DataGenerator(keras.utils.Sequence):
             coords_lat1 = np.expand_dims(coords_lat1, axis=3)
             coords_lon1 = np.expand_dims(coords_lon1, axis=3)
             whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1 ),axis = 3)
-        return whole_data
+        return whole
     
     def __getitem__(self, i):
         'Generate one batch of data'
         idxs = self.idxs[i * self.batch_size : (i + 1) * self.batch_size]
-        x = np.stack([self.calculateValues(i) for i in idxs], axis = 0)
+        x = np.stack([self.calculateValues(i).data for i in idxs], axis = 0)
         return x, x
-
+    
+    def info_extra(self, ix):
+        tix, levix, latix, lonix = np.unravel_index(ix, self.subset_shape)
+        subset_selection = dict(
+            longitude = slice(lonix, lonix + self.leads["longitude"]),
+            latitude = slice(latix, latix + self.leads["latitude"]),
+            level = slice(levix, levix + self.leads["level"]),
+            time = slice(tix, tix + self.leads["time"]),
+        )
+        return subset_selection
+    
+    def info(self, i):
+        idxs = self.idxs[i * self.batch_size : (i + 1) * self.batch_size]
+        info = np.stack([self.info_extra(i) for i in idxs], axis = 0)
+        return info 
+        
     def on_epoch_end(self):
         'Updates indexes after each epoch'
         self.idxs = random.sample(range(0, self.subset_length), self.num_samples)
@@ -146,9 +162,9 @@ def data_preprocessing(path, var, region):
             ds.append(data[v].expand_dims({'level': generic_level}, 1))
 
     data = xr.concat(ds, 'level').transpose('time', 'latitude', 'longitude', 'level')
-    mean = data.mean(('time', 'latitude', 'longitude')).compute() 
-    std = data.std('time').mean(('latitude', 'longitude')).compute() 
-    return (data, mean.data[0], std.data[0])
+    #mean = data.mean(('time', 'latitude', 'longitude')).compute() 
+    #std = data.std('time').mean(('latitude', 'longitude')).compute() 
+    return (data)#, mean.data[0], std.data[0])
     
     
 def split_data(data, percentage):
@@ -171,4 +187,41 @@ def split_data(data, percentage):
 def norm_data(data, mean, std):
     norm_data = data * std + mean
     return (norm_data)
+   
+def chunk_data(data, size):
+    """
+    Chunks data into (N, t, lat, lon, level)
+    Args:
+    data: 4D - Numpy array.
+    size: (t, lat, lon, level)
     
+    Returns N chunks with size (t, lat, long, level)
+    """
+    assert (data.shape[0] >= size[0] and data.shape[1] >= size[1] and data.shape[2] >= size[2]), 'Chunks size cannot be larger than the data size.'
+    
+    chunk_num = (int(data.shape[0]/size[0] ), int(data.shape[1]/size[1]  ), int(data.shape[2] /size[2]))
+    res_chunk = (data.shape[0]%size[0], data.shape[1]%size[1] ,data.shape[2] %size[2])
+    
+    length = int(np.prod(chunk_num))    
+    
+    x = np.stack([calculateChunks(data, i, size, chunk_num) for i in range(length)], axis = 0)
+
+    return x, chunk_num
+
+def calculateChunks(data, i, size, chunk_num):
+    tix, latix, lonix = np.unravel_index(i, chunk_num )
+    return data[tix*size[0]: tix*size[0] + size[0], latix*size[1]: latix*size[1] + size[1], lonix*size[2]: lonix*size[2] + size[2]]
+
+
+def merge_data(data, num_chunks):
+    """
+    Merges data into (t, lat, lon, level)
+    Args:
+    data: 5D - Numpy array.
+    size: (t, lat, lon, level)
+    
+    Returns complete data (t, lat, long, level)
+    """
+    x = np.concatenate([  np.concatenate([np.concatenate([data[ (k*num_chunks[1]) +  (j*num_chunks[2]) + i] for i in range(num_chunks[2])], axis=2) for j in range(num_chunks[1])], axis = 1) for k in range(num_chunks[0])], axis = 0)
+                
+    return x
