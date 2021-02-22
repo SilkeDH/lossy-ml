@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from collections import OrderedDict, defaultdict
 from keras.callbacks import LearningRateScheduler
 from lossycomp.dataLoader import DataGenerator, data_preprocessing, split_data, norm_data
-from lossycomp.utils import check_gpu, decay_schedule, r2_coef
+from lossycomp.utils import check_gpu, decay_schedule, correlation
 from lossycomp.plots import mult_plot, single_plot, plot_history
 from tensorflow.keras.optimizers import Adam
 from lossycomp.models import Autoencoder
@@ -40,7 +40,7 @@ if not(os.path.exists('results/'+args["output"])):
 model.summary()
 
 #Compile model.
-model.compile(optimizer = Adam(lr=0.001), loss=tf.keras.losses.MeanSquaredError(), metrics=[r2_coef, 'MAE'])
+model.compile(optimizer = Adam(lr=0.001), loss=tf.keras.losses.MeanSquaredError(), metrics=[correlation, 'MAE'])
 
 dask.config.set(**{'array.slicing.split_large_chunks': False})
 
@@ -65,14 +65,14 @@ nb_epochs = args["epochs"]
 model_weights = 'params_model_epoch_'
 
 # Load data.
-dg_train = DataGenerator(train, 100000, leads, batch_size=batch_size, load=True, mean= mean, std=std) 
-dg_test = DataGenerator(test, 20000, leads, batch_size=batch_size, load=True, mean= mean, std=std)
+dg_train = DataGenerator(train, 400000, leads, batch_size=batch_size, load=True, mean= mean, std=std, standardize = True) 
+dg_test = DataGenerator(test, 40000, leads, batch_size=batch_size, load=True, mean= mean, std=std, standardize = True)
 
 # Train network
 train_history = defaultdict(list)
 test_history = defaultdict(list)
 
-model.load_weights('results/'+args["output"]+'/weights/{0}{1:03d}.hdf5'.format(model_weights, 199))
+#model.load_weights('results/'+args["output"]+'/weights/{0}{1:03d}.hdf5'.format(model_weights, 199))
 
 def timer(start,end):
     hours, rem = divmod(end-start, 3600)
@@ -128,6 +128,10 @@ for epoch in range(nb_epochs):
     # save weights every epoch
     model.save_weights('results/'+args["output"]+'/weights/{0}{1:03d}.hdf5'.format(model_weights, epoch),
                                overwrite=True)
+    
+    pickle.dump({'model': train_history, "mean": mean, "std": std}, open('results/' +args["output"] + '/model-history.pkl', 'wb'))
+
+
 
 end = time.time()
 pickle.dump({'model': train_history, "mean": mean, "std": std, "time": timer(start, end)}, open('results/'+args["output"]+'/model-history.pkl', 'wb'))

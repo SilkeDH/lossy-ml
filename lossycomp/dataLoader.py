@@ -8,10 +8,8 @@ from tensorflow import keras
 from lossycomp.constants import Region, REGIONS
 from lossycomp.encodings import encode_lat, encode_lon
 
-random.seed(1234)
-
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, data, num_samples, leads, mean, std, batch_size=10, coords = False, load=True):
+    def __init__(self, data, num_samples, leads, mean, std, batch_size=10, standardize = False, coords = False, load=True):
         """
         Data generator. The samples generated are shuffled.
         Template from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
@@ -35,18 +33,20 @@ class DataGenerator(keras.utils.Sequence):
         self.coords = coords
         self.check_inputs()
         
-        # Normalize
-        self.data = (self.data - self.mean) / self.std
+        if standardize:
+            self.data = (self.data - self.mean) / self.std
 
-        self.check_chunks()
+        tim_diff, lat_diff, lon_diff, lev_diff, subset_shape = self.check_chunks()
+        
         subset = self.data.isel(
-            time = slice(None, self.data.time.size - self.leads["time"]),
-            #level = slice(None, self.data.level.size - self.leads["level"]), #TODO: Chunks == input.
-            latitude = slice(None, self.data.latitude.size - self.leads["latitude"]),
-            longitude = slice(None, self.data.longitude.size - self.leads["longitude"]),
+            time = slice(None, tim_diff),
+            level = slice(None, lev_diff),
+            latitude = slice(None, lat_diff),
+            longitude = slice(None, lon_diff),
         )
         
-        self.subset_shape = subset.time.size, subset.level.size, subset.latitude.size, subset.longitude.size
+        
+        self.subset_shape = subset_shape[0], subset_shape[1], subset_shape[2], subset_shape[3]
                 
         self.subset_length = int(np.prod(self.subset_shape))
         
@@ -66,29 +66,35 @@ class DataGenerator(keras.utils.Sequence):
             level = slice(levix, levix + self.leads["level"]),
             time = slice(tix, tix + self.leads["time"]),
         )
+        
         whole = self.data.isel(**subset_selection)
-        #whole_data = whole.data
+        
+        whole_data = self.data.isel(**subset_selection)
         
         # Add coordinates as extra channels.
         if self.coords:
             lat = whole.coords['latitude'].values
             lon = whole.coords['longitude'].values
-            lat_st = np.stack([encode_lat(x) for x in lat])
-            lon_st = np.stack([encode_lon(x) for x in lon])
-            lat1, lat2 = np.hsplit(lat_st, 2)
-            lon1, lon2 = np.hsplit(lon_st, 2)
-            xx, yy = np.meshgrid(lon1, lat1)
-            xx2, yy2 = np.meshgrid(lon2, lat2)
+            #lat_st = np.stack([encode_lat(x) for x in lat])
+            #lon_st = np.stack([encode_lon(x) for x in lon])
+            #lat1, lat2 = np.hsplit(lat_st, 2)
+            #lon1, lon2 = np.hsplit(lon_st, 2)
+            #xx, yy = np.meshgrid(lon1, lat1)
+            #xx2, yy2 = np.meshgrid(lon2, lat2)
+            
+            xx, yy = np.meshgrid(lon, lat)
+            
             coords_lat = np.concatenate([[xx]] * len(whole.time), axis=0)
             coords_lon = np.concatenate([[yy]] * len(whole.time), axis=0)
-            coords_lat1 = np.concatenate([[xx2]] * len(whole.time), axis=0)
-            coords_lon1 = np.concatenate([[yy2]] * len(whole.time), axis=0)
+            #coords_lat1 = np.concatenate([[xx2]] * len(whole.time), axis=0)
+            #coords_lon1 = np.concatenate([[yy2]] * len(whole.time), axis=0)
             coords_lat = np.expand_dims(coords_lat, axis=3)
             coords_lon = np.expand_dims(coords_lon, axis=3)
-            coords_lat1 = np.expand_dims(coords_lat1, axis=3)
-            coords_lon1 = np.expand_dims(coords_lon1, axis=3)
-            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1 ),axis = 3)
-        return whole
+            #coords_lat1 = np.expand_dims(coords_lat1, axis=3)
+            #coords_lon1 = np.expand_dims(coords_lon1, axis=3)
+            #whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1 ),axis = 3)
+            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon),axis = 3)
+        return whole_data
     
     def __getitem__(self, i):
         'Generate one batch of data'
@@ -121,12 +127,28 @@ class DataGenerator(keras.utils.Sequence):
         assert all(var in self.leads for var in ['longitude', 'time', 'latitude', 'level'])
         
     def check_chunks(self):
-        tim_diff = self.leads["time"] - len(self.data.time)
-        lat_diff = self.leads["latitude"] - len(self.data.latitude)
-        lon_diff = self.leads["longitude"] - len(self.data.longitude)
-        lev_diff = self.leads["level"] - len(self.data.level)
-        if (tim_diff >= 0 or lat_diff>= 0 or lon_diff >= 0): #or lev_diff > 0)
-            raise ValueError("Chunk size can't be equal or greater than actual length.")
+        tim_diff = self.data.time.size - self.leads["time"]
+        lat_diff = self.data.latitude.size - self.leads["latitude"] 
+        lon_diff = self.data.longitude.size - self.leads["longitude"]
+        lev_diff = self.data.level.size - self.leads["level"] 
+        if (tim_diff < 0 or lat_diff < 0 or lon_diff < 0 or lev_diff < 0):
+            raise ValueError("Chunk size can't be bigger than data size.")
+            
+        subset_shape = [tim_diff, lev_diff, lat_diff, lon_diff]
+        
+        if tim_diff == 0:
+            tim_diff = len(self.data.time)
+            subset_shape[0] = 1
+        if lat_diff == 0:
+            lat_diff = len(self.data.latitude)
+            subset_shape[2] = 1
+        if lon_diff == 0:
+            lon_diff = len(self.data.longitude)
+            subset_shape[3] = 1
+        if lev_diff == 0:
+            lev_diff = len(self.data.level)
+            subset_shape[1] = 1
+        return tim_diff, lat_diff, lon_diff, lev_diff, subset_shape
             
     
 def data_preprocessing(path, var, region):
@@ -162,9 +184,9 @@ def data_preprocessing(path, var, region):
             ds.append(data[v].expand_dims({'level': generic_level}, 1))
 
     data = xr.concat(ds, 'level').transpose('time', 'latitude', 'longitude', 'level')
-    #mean = data.mean(('time', 'latitude', 'longitude')).compute() 
-    #std = data.std('time').mean(('latitude', 'longitude')).compute() 
-    return (data)#, mean.data[0], std.data[0])
+    mean = data.mean(('time', 'latitude', 'longitude')).compute() 
+    std = data.std('time').mean(('latitude', 'longitude')).compute() 
+    return (data, mean.data[0], std.data[0])
     
     
 def split_data(data, percentage):
@@ -188,40 +210,100 @@ def norm_data(data, mean, std):
     norm_data = data * std + mean
     return (norm_data)
    
+
 def chunk_data(data, size):
     """
-    Chunks data into (N, t, lat, lon, level)
+    Chunks data into (N, t, lat, lon, attr.)
     Args:
-    data: 4D - Numpy array.
-    size: (t, lat, lon, level)
+    ===================
+    data: 4D - Numpy array (time, lat, lon, attr).
+    size: (t, lat, lon, level) of one chunk.
     
-    Returns N chunks with size (t, lat, long, level)
+    Returns N chunks with size (t, lat, long, attr.)
     """
     assert (data.shape[0] >= size[0] and data.shape[1] >= size[1] and data.shape[2] >= size[2]), 'Chunks size cannot be larger than the data size.'
     
-    chunk_num = (int(data.shape[0]/size[0] ), int(data.shape[1]/size[1]  ), int(data.shape[2] /size[2]))
-    res_chunk = (data.shape[0]%size[0], data.shape[1]%size[1] ,data.shape[2] %size[2])
+    chunk_num = (int(np.ceil(data.shape[0]/size[0]) ), int(np.ceil(data.shape[1]/size[1])), int(np.ceil(data.shape[2] /size[2])))
     
-    length = int(np.prod(chunk_num))    
+    length = int(np.prod(chunk_num)) 
     
-    x = np.stack([calculateChunks(data, i, size, chunk_num) for i in range(length)], axis = 0)
-
-    return x, chunk_num
-
-def calculateChunks(data, i, size, chunk_num):
-    tix, latix, lonix = np.unravel_index(i, chunk_num )
-    return data[tix*size[0]: tix*size[0] + size[0], latix*size[1]: latix*size[1] + size[1], lonix*size[2]: lonix*size[2] + size[2]]
-
-
-def merge_data(data, num_chunks):
-    """
-    Merges data into (t, lat, lon, level)
-    Args:
-    data: 5D - Numpy array.
-    size: (t, lat, lon, level)
+    x = np.stack([calculateValues(data, i, size, chunk_num) for i in range(length)], axis = 0)
     
-    Returns complete data (t, lat, long, level)
-    """
-    x = np.concatenate([  np.concatenate([np.concatenate([data[ (k*num_chunks[1]) +  (j*num_chunks[2]) + i] for i in range(num_chunks[2])], axis=2) for j in range(num_chunks[1])], axis = 1) for k in range(num_chunks[0])], axis = 0)
-                
     return x
+
+def calculateValues(data, i, size, chunk_num):
+    tix, latix, lonix = np.unravel_index(i, chunk_num)
+
+    if (tix*size[0] + size[0]) > data.shape[0]:
+        out = data[-size[0]:, latix*size[1]: latix*size[1] + size[1], lonix*size[2]: lonix*size[2] + size[2]]
+        
+        if ((latix*size[1] + size[1]) > data.shape[1]) and ((lonix*size[2] + size[2]) > data.shape[2]):
+            out = data[-size[0]:, -size[1]:, -size[2]:]
+        elif(latix*size[1] + size[1]) > data.shape[1]:
+            out = data[-size[0]:, -size[1]: ,  lonix*size[2]: lonix*size[2] + size[2]]
+        elif(lonix*size[2] + size[2]) > data.shape[2]:
+            out = data[-size[0]:, latix*size[1]: latix*size[1] + size[1], -size[2]:]
+        
+    elif (latix*size[1] + size[1]) > data.shape[1]:
+        out = data[tix*size[0]: tix*size[0] + size[0], -size[1]: , lonix*size[2]: lonix*size[2] + size[2]]
+        if(lonix*size[2] + size[2]) > data.shape[2]:
+            out = data[tix*size[0]: tix*size[0] + size[0], -size[1]: , -size[2]:]
+        
+    elif (lonix*size[2] + size[2]) > data.shape[2]:
+        out = data[tix*size[0]: tix*size[0] + size[0], latix*size[1]: latix*size[1] + size[1], -size[2]:]
+
+    else:
+        out = data[tix*size[0]: tix*size[0] + size[0], latix*size[1]: latix*size[1] + size[1], lonix*size[2]: lonix*size[2] + size[2]]
+        
+    return out
+
+
+def merge_data(data, size):
+    """
+    Merges data into (t, lat, lon, attr.)
+    Args:
+    =======================
+    data: 5D - Numpy array.
+    size: (t, lat, lon, attr.) size of the output data.
+    
+    Returns complete data (t, lat, long, attr.)
+    """
+    
+    chunks_size = data.shape[1:4]
+    num_chunks = (int(np.ceil(size[0]/chunks_size[0]) ), int(np.ceil(size[1]/chunks_size[1])), int(np.ceil(size[2] /chunks_size[2])))
+    x = np.concatenate([ np.concatenate([np.concatenate(
+        [ select_chunk(data,i,j,k,num_chunks, chunks_size, size)
+        for i in range(num_chunks[2])], axis=2)for j in range(num_chunks[1])], axis = 1)
+                         for k in range(num_chunks[0])], axis = 0)
+    return x
+     
+def select_chunk(data, i, j, k, num_chunks, chunks_size, size):
+
+    if ((i * chunks_size[2] +chunks_size[2]) > size[2]):
+        mn = chunks_size[2] - ((i * chunks_size[2] + chunks_size[2])- size[2])
+        out = data[(k*num_chunks[1]* num_chunks[2]) +  (j*num_chunks[2]) + i][:,:,-mn:]
+        
+        if ((j * chunks_size[1] + chunks_size[1])  > size[1]):
+            mn = chunks_size[1] - ((j * chunks_size[1] + chunks_size[1]) - size[1])
+            out = out[:,-mn:,:]
+            
+        if ((k * chunks_size[0]+ chunks_size[0]) >size[0]):
+            mn = chunks_size[0] - ((k * chunks_size[0] + chunks_size[0]) - size[0])
+            out = out[-mn:,:,:]  
+        
+            
+    elif ((j * chunks_size[1] + chunks_size[1])  > size[1]):
+        mn = chunks_size[1] - ((j * chunks_size[1] + chunks_size[1]) - size[1])
+        out = data[(k*num_chunks[1]* num_chunks[2]) +  (j*num_chunks[2]) + i][:,-mn:,:]
+        if ((k * chunks_size[0]+ chunks_size[0]) >size[0]):
+            mn = chunks_size[0] - ((k * chunks_size[0] + chunks_size[0]) - size[0])
+            out = out[-mn:,:,:]
+            
+    elif ((k * chunks_size[0]+ chunks_size[0]) > size[0]):
+        mn = chunks_size[0] - ((k * chunks_size[0] + chunks_size[0]) - size[0])
+        out = data[(k*num_chunks[1]* num_chunks[2]) +  (j*num_chunks[2]) + i][-mn:,:,:]
+
+
+    else:
+        out = data[(k*num_chunks[1]* num_chunks[2]) +  (j*num_chunks[2]) + i]
+    return out

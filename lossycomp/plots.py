@@ -32,6 +32,7 @@ def single_plot(data, time, title, subtitle,  min_val, max_val, cmap = 'viridis'
     plt.title(title)
     plt.ylabel("Latitude")
     plt.xlabel("Longitude")
+    plt.tight_layout()
     plt.show()
     
 def mult_plot(data, rows, columns, title, min, max, cmap = 'viridis'):
