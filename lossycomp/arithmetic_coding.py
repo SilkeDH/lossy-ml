@@ -603,3 +603,46 @@ class BitOutputStream:
 		while self.numbitsfilled != 0:
 			self.write(0)
 		self.output.close()
+        
+        
+        
+# Arithmetic coding usage
+    
+# This is just an example of how to add arithmetic coding into the compress.py script. Might be outdated.
+#freqs = arithmetic_coding.SimpleFrequencyTable([0] * (int(error.max()+1)))
+#error2 = error.flatten()
+#for i in range(len(error2)):
+#        b = error2[i]
+#        freqs.increment(b)
+
+#print(freqs)
+#outputfile = "out_error_pos.txt"
+# Read input file again, compress with arithmetic coding, and write output file
+#with contextlib.closing(arithmetic_coding.BitOutputStream(open(outputfile, "wb"))) as bitout:
+#    write_frequencies(bitout, freqs, error.max())
+#    compress_ari(freqs, error2, bitout, error.max())
+        
+        
+#freqs = arithmetic_coding.SimpleFrequencyTable([0] * (int(error_neg.max()+1)))
+#error2_neg = error_neg.flatten()
+#for i in range(len(error2_neg)):
+#        b = error2_neg[i]
+#        freqs.increment(b)
+
+#print(freqs)
+#outputfile = "out_error_neg.txt"
+# Read input file again, compress with arithmetic coding, and write output file
+#with contextlib.closing(arithmetic_coding.BitOutputStream(open(outputfile, "wb"))) as bitout:
+#    write_frequencies(bitout, freqs, error_neg.max())
+#    compress_ari(freqs, error2_neg, bitout, error_neg.max())
+    
+#error_first_el = error.flatten()[0]
+#error_neg_first_el = error_neg.flatten()[0]
+    
+## np.diff flatten
+#error = np.diff(error.flatten())
+#error_neg = np.diff(error_neg.flatten())
+    
+## np.diff across time.
+#error = np.diff(error, axis = 0)
+#error_neg = np.diff(error_neg, axis = 0)

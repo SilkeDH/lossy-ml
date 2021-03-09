@@ -1,4 +1,4 @@
-"""Move to Front Algortihm"""
+"""Move to Front Algorithm"""
 
 from typing import List, Tuple, Union
 import numpy as np
@@ -49,3 +49,8 @@ def decode(compressed_data, dict):
     
     values = np.hstack([fnc(rank) for rank in compressed_data])
     return values
+
+# Move to Front usage
+# This is just an example of how to add arithmetic coding into the compress.py script. Might be outdated.
+#error = encode(error, int(error.max() + 1))
+#error_neg = encode(error_neg, int(error_neg.max() + 1))

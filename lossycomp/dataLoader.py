@@ -75,25 +75,25 @@ class DataGenerator(keras.utils.Sequence):
         if self.coords:
             lat = whole.coords['latitude'].values
             lon = whole.coords['longitude'].values
-            #lat_st = np.stack([encode_lat(x) for x in lat])
-            #lon_st = np.stack([encode_lon(x) for x in lon])
-            #lat1, lat2 = np.hsplit(lat_st, 2)
-            #lon1, lon2 = np.hsplit(lon_st, 2)
-            #xx, yy = np.meshgrid(lon1, lat1)
-            #xx2, yy2 = np.meshgrid(lon2, lat2)
+            lat_st = np.stack([encode_lat(x) for x in lat])
+            lon_st = np.stack([encode_lon(x) for x in lon])
+            lat1, lat2 = np.hsplit(lat_st, 2)
+            lon1, lon2 = np.hsplit(lon_st, 2)
+            xx, yy = np.meshgrid(lon1, lat1)
+            xx2, yy2 = np.meshgrid(lon2, lat2)
             
-            xx, yy = np.meshgrid(lon, lat)
+            #xx, yy = np.meshgrid(lon, lat)
             
             coords_lat = np.concatenate([[xx]] * len(whole.time), axis=0)
             coords_lon = np.concatenate([[yy]] * len(whole.time), axis=0)
-            #coords_lat1 = np.concatenate([[xx2]] * len(whole.time), axis=0)
-            #coords_lon1 = np.concatenate([[yy2]] * len(whole.time), axis=0)
+            coords_lat1 = np.concatenate([[xx2]] * len(whole.time), axis=0)
+            coords_lon1 = np.concatenate([[yy2]] * len(whole.time), axis=0)
             coords_lat = np.expand_dims(coords_lat, axis=3)
             coords_lon = np.expand_dims(coords_lon, axis=3)
-            #coords_lat1 = np.expand_dims(coords_lat1, axis=3)
-            #coords_lon1 = np.expand_dims(coords_lon1, axis=3)
-            #whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1 ),axis = 3)
-            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon),axis = 3)
+            coords_lat1 = np.expand_dims(coords_lat1, axis=3)
+            coords_lon1 = np.expand_dims(coords_lon1, axis=3)
+            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1 ),axis = 3)
+            #whole_data =  np.concatenate((whole_data, coords_lat, coords_lon),axis = 3)
         return whole_data
     
     def __getitem__(self, i):
@@ -119,6 +119,7 @@ class DataGenerator(keras.utils.Sequence):
         
     def on_epoch_end(self):
         'Updates indexes after each epoch'
+        random.seed(30)
         self.idxs = random.sample(range(0, self.subset_length), self.num_samples)
             
     def check_inputs(self):
