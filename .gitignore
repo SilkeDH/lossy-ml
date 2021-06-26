@@ -13,6 +13,7 @@
 models/
 results/
 logs/
+slurm/
 
 *.pyc
 .vscode/

@@ -9,7 +9,7 @@ from lossycomp.constants import Region, REGIONS
 from lossycomp.encodings import encode_lat, encode_lon
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, data, num_samples, leads, mean, std, batch_size=10, standardize = False, coords = False, load=True):
+    def __init__(self, data, num_samples, leads, mean, std, batch_size=10, standardize = False, coords = False, soil = False, load=True):
         """
         Data generator. The samples generated are shuffled.
         Template from https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
@@ -31,6 +31,7 @@ class DataGenerator(keras.utils.Sequence):
         self.batch_size = batch_size
         self.leads = leads
         self.coords = coords
+        self.soil = soil
         self.check_inputs()
         
         if standardize:
@@ -66,7 +67,7 @@ class DataGenerator(keras.utils.Sequence):
             level = slice(levix, levix + self.leads["level"]),
             time = slice(tix, tix + self.leads["time"]),
         )
-        
+
         whole = self.data.isel(**subset_selection)
         
         whole_data = self.data.isel(**subset_selection)
@@ -92,14 +93,20 @@ class DataGenerator(keras.utils.Sequence):
             coords_lon = np.expand_dims(coords_lon, axis=3)
             coords_lat1 = np.expand_dims(coords_lat1, axis=3)
             coords_lon1 = np.expand_dims(coords_lon1, axis=3)
-            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1 ),axis = 3)
-            #whole_data =  np.concatenate((whole_data, coords_lat, coords_lon),axis = 3)
+            soil_data = whole.coords['lsm'].values
+            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1, soil_data ),axis = 3)
+            
+        #if self.soil:
+            #soil_data = whole.coords['lsm'].values
+            #whole_data = np.concatenate((whole_data, soil_data),axis = 3)
+            
         return whole_data
     
     def __getitem__(self, i):
         'Generate one batch of data'
         idxs = self.idxs[i * self.batch_size : (i + 1) * self.batch_size]
         x = np.stack([self.calculateValues(i).data for i in idxs], axis = 0)
+        x= np.array(x, dtype = np.float32)
         return x, x
     
     def info_extra(self, ix):
@@ -119,7 +126,7 @@ class DataGenerator(keras.utils.Sequence):
         
     def on_epoch_end(self):
         'Updates indexes after each epoch'
-        random.seed(30)
+        #random.seed(30)
         self.idxs = random.sample(range(0, self.subset_length), self.num_samples)
             
     def check_inputs(self):
@@ -174,8 +181,10 @@ def data_preprocessing(path, var, region):
     ds.close()
     
     z = xr.open_mfdataset(path, combine='by_coords')
+           
     data = z.sel(longitude=slice(region.min_lon,region.max_lon),
                  latitude=slice(region.min_lat,region.max_lat))
+    
     ds = []
     generic_level = xr.DataArray([1], coords={'level': [1]}, dims=['level'])
     for v, levels in var.items():
@@ -183,10 +192,11 @@ def data_preprocessing(path, var, region):
             ds.append(data[v].sel(level=levels))
         except ValueError:
             ds.append(data[v].expand_dims({'level': generic_level}, 1))
-
+    
     data = xr.concat(ds, 'level').transpose('time', 'latitude', 'longitude', 'level')
     mean = data.mean(('time', 'latitude', 'longitude')).compute() 
     std = data.std('time').mean(('latitude', 'longitude')).compute() 
+ 
     return (data, mean.data[0], std.data[0])
     
     
@@ -205,6 +215,7 @@ def split_data(data, percentage):
 
     data_train = data.isel(time=np.sort(train_idx))
     data_test = data.isel(time=np.sort(test_idx))
+
     return (data_train, data_test)
     
 def norm_data(data, mean, std):
