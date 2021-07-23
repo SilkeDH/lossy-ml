@@ -4,11 +4,13 @@ import os
 import random
 import xarray as xr
 import numpy as np
+import pickle
 from tensorflow import keras
+from collections import OrderedDict, defaultdict
 from lossycomp.constants import Region, REGIONS
 from lossycomp.encodings import encode_lat, encode_lon
 
-class DataGenerator(keras.utils.Sequence):
+class DataGenerator2(keras.utils.Sequence):
     def __init__(self, data, num_samples, leads, mean, std, batch_size=10, standardize = False, coords = False, soil = False, load=True):
         """
         Data generator. The samples generated are shuffled.
@@ -68,39 +70,35 @@ class DataGenerator(keras.utils.Sequence):
             time = slice(tix, tix + self.leads["time"]),
         )
 
-        whole = self.data.isel(**subset_selection)
-        
         whole_data = self.data.isel(**subset_selection)
-        
+            
         # Add coordinates as extra channels.
         if self.coords:
-            lat = whole.coords['latitude'].values
-            lon = whole.coords['longitude'].values
+            lat = whole_data.coords['latitude'].values
+            lon = whole_data.coords['longitude'].values
             lat_st = np.stack([encode_lat(x) for x in lat])
             lon_st = np.stack([encode_lon(x) for x in lon])
             lat1, lat2 = np.hsplit(lat_st, 2)
             lon1, lon2 = np.hsplit(lon_st, 2)
             xx, yy = np.meshgrid(lon1, lat1)
             xx2, yy2 = np.meshgrid(lon2, lat2)
-            
-            #xx, yy = np.meshgrid(lon, lat)
-            
-            coords_lat = np.concatenate([[xx]] * len(whole.time), axis=0)
-            coords_lon = np.concatenate([[yy]] * len(whole.time), axis=0)
-            coords_lat1 = np.concatenate([[xx2]] * len(whole.time), axis=0)
-            coords_lon1 = np.concatenate([[yy2]] * len(whole.time), axis=0)
+            coords_lon = np.concatenate([[xx]] * len(whole_data.time), axis=0)
+            coords_lat = np.concatenate([[yy]] * len(whole_data.time), axis=0)
+            coords_lon1 = np.concatenate([[xx2]] * len(whole_data.time), axis=0)
+            coords_lat1 = np.concatenate([[yy2]] * len(whole_data.time), axis=0)
             coords_lat = np.expand_dims(coords_lat, axis=3)
             coords_lon = np.expand_dims(coords_lon, axis=3)
             coords_lat1 = np.expand_dims(coords_lat1, axis=3)
             coords_lon1 = np.expand_dims(coords_lon1, axis=3)
+            whole_data =  np.concatenate((whole_data, coords_lat, coords_lat1, coords_lon, coords_lon1), axis = 3) 
+            
+        if self.soil:
+            whole = self.data.isel(**subset_selection)
             soil_data = whole.coords['lsm'].values
-            whole_data =  np.concatenate((whole_data, coords_lat, coords_lon, coords_lat1, coords_lon1, soil_data ),axis = 3)
-            
-        #if self.soil:
-            #soil_data = whole.coords['lsm'].values
-            #whole_data = np.concatenate((whole_data, soil_data),axis = 3)
-            
+            whole_data = np.concatenate((whole_data, soil_data),axis = 3)  
+        
         return whole_data
+            
     
     def __getitem__(self, i):
         'Generate one batch of data'
@@ -126,7 +124,7 @@ class DataGenerator(keras.utils.Sequence):
         
     def on_epoch_end(self):
         'Updates indexes after each epoch'
-        #random.seed(30)
+        random.seed(30)
         self.idxs = random.sample(range(0, self.subset_length), self.num_samples)
             
     def check_inputs(self):
@@ -159,7 +157,7 @@ class DataGenerator(keras.utils.Sequence):
         return tim_diff, lat_diff, lon_diff, lev_diff, subset_shape
             
     
-def data_preprocessing(path, var, region):
+def data_preprocessing2(path, var, region):
     """ Returns preprocessed data, mean and std.
     Arguments
     =========
@@ -195,12 +193,13 @@ def data_preprocessing(path, var, region):
     
     data = xr.concat(ds, 'level').transpose('time', 'latitude', 'longitude', 'level')
     mean = data.mean(('time', 'latitude', 'longitude')).compute() 
-    std = data.std('time').mean(('latitude', 'longitude')).compute() 
+    mean = data.std(('time', 'latitude', 'longitude')).compute() 
+    #std = data.std('time').mean(('latitude', 'longitude')).compute() 
  
     return (data, mean.data[0], std.data[0])
     
     
-def split_data(data, percentage):
+def split_data2(data, percentage):
     """ Returns splitted train-test data depending
     on specified dimension.
     Arguments
@@ -217,6 +216,217 @@ def split_data(data, percentage):
     data_test = data.isel(time=np.sort(test_idx))
 
     return (data_train, data_test)
+
+class DataGenerator(keras.utils.Sequence):
+    def __init__(self, data, indices, leads, mean, std, batch_size=10, standardize = True, coords = False, soil = False, load=True, shuffle = False):
+        """
+        Data generator. The samples generated are shuffled.
+        Template from https://github.com/pangeo-data/WeatherBench/blob/master/notebooks/3-cnn-example.ipynb
+        Args:
+            data: DataArray
+            indices: Array with indicates the time indices samples. it also provides the number of samples.
+            leads: Determines chunk size in each dimension. 
+                   Format dict(time=12, longitude=10, latitude=10, level=1)
+            batch_size: Int. Batch size.
+            load: bool. If True, datadet is loaded into RAM.
+            mean: Mean from dataset.
+            std: Standart deviation from dataset.
+            coords: Include coordinates information.
+            soil: soild indicates if the land-sea mask should be used, the data must contain the values.
+            shuffle: shuffle the time indices.
+        """
+        self.data = data
+        self.indices = indices
+        self.mean = mean
+        self.std = std
+        self.batch_size = batch_size
+        self.leads = leads
+        self.coords = coords
+        self.shuffle = shuffle
+        self.soil = soil
+        self.check_inputs()
+
+        if standardize:
+            self.data = (self.data - self.mean) / self.std
+
+        tim_diff, lat_diff, lon_diff, lev_diff, subset_shape = self.check_chunks()
+
+        subset = self.data.isel(
+            time = slice(None, tim_diff),
+            level = slice(None, lev_diff),
+            latitude = slice(None, lat_diff),
+            longitude = slice(None, lon_diff),
+        )
+
+        self.subset_shape =  subset_shape[2], subset_shape[3]
+        
+        self.subset_length = int(np.prod(self.subset_shape))
+        
+        self.on_epoch_end()
+
+        if load: print('Loading data into RAM'); self.data.load()
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.ceil(len(self.indices)/self.batch_size))
+
+    def calculateValues(self, ix):
+        latix, lonix = np.unravel_index(ix[0], self.subset_shape)
+        subset_selection = dict(
+            longitude = slice(lonix, lonix + self.leads["longitude"]),
+            latitude = slice(latix, latix + self.leads["latitude"]),
+            time = slice(ix[1], ix[1] + self.leads["time"]),
+        )
+        
+        whole_data = self.data.isel(**subset_selection)
+            
+        # Add coordinates as extra channels.
+        if self.coords:
+            lat = whole_data.coords['latitude'].values
+            lon = whole_data.coords['longitude'].values
+            lat_st = np.stack([encode_lat(x) for x in lat])
+            lon_st = np.stack([encode_lon(x) for x in lon])
+            lat1, lat2 = np.hsplit(lat_st, 2)
+            lon1, lon2 = np.hsplit(lon_st, 2)
+            xx, yy = np.meshgrid(lon1, lat1)
+            xx2, yy2 = np.meshgrid(lon2, lat2)
+            coords_lon = np.concatenate([[xx]] * len(whole_data.time), axis=0)
+            coords_lat = np.concatenate([[yy]] * len(whole_data.time), axis=0)
+            coords_lon1 = np.concatenate([[xx2]] * len(whole_data.time), axis=0)
+            coords_lat1 = np.concatenate([[yy2]] * len(whole_data.time), axis=0)
+            coords_lat = np.expand_dims(coords_lat, axis=3)
+            coords_lon = np.expand_dims(coords_lon, axis=3)
+            coords_lat1 = np.expand_dims(coords_lat1, axis=3)
+            coords_lon1 = np.expand_dims(coords_lon1, axis=3)
+            whole_data =  np.concatenate((whole_data, coords_lat, coords_lat1, coords_lon, coords_lon1), axis = 3) 
+            
+        if self.soil:
+            whole = self.data.isel(**subset_selection)
+            soil_data = whole.coords['lsm'].values
+            whole_data = np.concatenate((whole_data, soil_data),axis = 3)  
+        
+        return whole_data
+    
+    def __getitem__(self, i):
+        'Generate one batch of data'
+        #idxs = [self.idxs[i * self.batch_size : (i + 1) * self.batch_size]]
+        idxs2 = [self.indices[i * self.batch_size : (i + 1) * self.batch_size]]
+        idxs = [[0]]
+        idxs_1_2 = [list(zip(idxs[x],idxs2[x])) for x in range(len(idxs))]
+        x = np.stack([self.calculateValues(i).data for i in idxs_1_2[0]], axis = 0)
+        x = np.array(x, dtype = np.float32)
+        return x, x
+    
+    def info_extra(self, ix):
+        latix, lonix = np.unravel_index(ix, self.subset_shape)
+        subset_selection = dict(
+            longitude = slice(lonix, lonix + self.leads["longitude"]),
+            latitude = slice(latix, latix + self.leads["latitude"]),
+        )
+        return subset_selection
+        
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        random.seed(30)
+        #self.idxs = random.sample(range(0, self.subset_length), len(self.indices) )
+        self.idxs = random.sample(range(0, self.subset_length), 1)
+        if self.shuffle == True:
+            np.random.shuffle(self.indices)
+        
+    def check_inputs(self):
+        assert isinstance(self.data, xr.core.dataarray.DataArray)
+        assert isinstance(self.leads, dict)
+        assert all(var in self.leads for var in ['longitude', 'time', 'latitude', 'level'])
+        
+    def check_chunks(self):
+        tim_diff = self.data.time.size - self.leads["time"]
+        lat_diff = self.data.latitude.size - self.leads["latitude"] 
+        lon_diff = self.data.longitude.size - self.leads["longitude"]
+        lev_diff = self.data.level.size - self.leads["level"] 
+        if (tim_diff < 0 or lat_diff < 0 or lon_diff < 0 or lev_diff < 0):
+            raise ValueError("Chunk size can't be bigger than data size.")
+            
+        subset_shape = [tim_diff, lev_diff, lat_diff, lon_diff]
+        
+        if tim_diff == 0:
+            tim_diff = len(self.data.time)
+            subset_shape[0] = 1
+        if lat_diff == 0:
+            lat_diff = len(self.data.latitude)
+            subset_shape[2] = 1
+        if lon_diff == 0:
+            lon_diff = len(self.data.longitude)
+            subset_shape[3] = 1
+        if lev_diff == 0:
+            lev_diff = len(self.data.level)
+            subset_shape[1] = 1
+        return tim_diff, lat_diff, lon_diff, lev_diff, subset_shape
+
+    
+def split_data(data, samples_train, samples_test, time, percentage):
+    """ Returns splitted train-test data depending
+    on specified dimension.
+    Arguments
+    =========
+    data: Dataarray.
+    percentage: % of data in train data in decimal (70% = 0.7).
+    """
+    np.random.seed(123)
+    idx = np.arange(len(data.time)- time)
+    idx = idx[: (-1* (len(idx)%time))]
+    np.random.shuffle(idx)
+    
+    train_idx =idx[0: int(len(idx)*percentage)]
+    test_idx = idx[len(train_idx):len(idx)]
+    idx_train = np.random.choice(range(len(train_idx)), samples_train)
+    idx_test = np.random.choice(range(len(test_idx)), samples_test)
+    return idx_train, idx_test
+    
+def norm_data(data, mean, std):
+    norm_data = data * std + mean
+    return (norm_data)
+
+def data_preprocessing(path, var, region, stats = True):
+    """ Returns preprocessed data, mean and std.
+    Arguments
+    =========
+    path: Path to the netcdf file.
+    var: Dictionary of the form {'var': level}. Use None for level if data is of single level.
+    region: Region to be cropped. Boundary region over lat,lon. 
+    Predefined regions set in `constants` module.
+    """
+
+    assert isinstance(region, (str, Region))
+    if isinstance(region, str) and region not in REGIONS.keys():
+        raise KeyError("Region unknown!")
+    else:
+        region = REGIONS[region] 
+        
+    assert isinstance(var, dict)
+    ds = xr.open_mfdataset(path, combine='by_coords')
+    assert hasattr(ds, list(var.keys())[0])
+    ds.close()
+    
+    z = xr.open_mfdataset(path, combine='by_coords')
+  
+    data = z.sel(longitude=slice(region.min_lon,region.max_lon),
+                 latitude=slice(region.min_lat,region.max_lat)) 
+    
+    ds = []
+    generic_level = xr.DataArray([1], coords={'level': [1]}, dims=['level'])
+    for v, levels in var.items():
+        try:
+            ds.append(data[v].sel(level=levels))
+        except ValueError:
+            ds.append(data[v].expand_dims({'level': generic_level}, 1))
+    
+    data = xr.concat(ds, 'level').transpose('time', 'latitude', 'longitude', 'level')
+    if stats:
+        mean = data.mean(('time', 'latitude', 'longitude')).compute() 
+        std = data.std('time').mean(('latitude', 'longitude')).compute() 
+        return (data, mean.data[0], std.data[0])
+    else:
+        return data 
     
 def norm_data(data, mean, std):
     norm_data = data * std + mean

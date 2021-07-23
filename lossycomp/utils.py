@@ -3,7 +3,7 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 def check_gpu():
     """Check which GPUS are available."""
@@ -136,19 +136,17 @@ def log10(x):
     return numerator / 10.0
 
 
-def calculate_psnr_5(mean,std):
-    def psnr(y_true, y_pred):
-        """Calculates the PSNR
-        Args:
-        =======
-        y_true: real value.
-        y_pred: predicted value.
-        Returns the PSNR."""
-        x = (y_pred[:,:,:,:,0]*std)+ mean
-        y = (y_true[:,:,:,:,0]*std)+ mean
-        vrange = K.max(y) - K.min(y)
-        psnr = 20 *  log10(vrange - (10 * log10(K.mean(K.square(y-x)))))
-        return psnr 
+def psnr_5(y_true, y_pred):
+    """Calculates the PSNR if we have more than one channel
+    Args:
+    =======
+    y_true: real value.
+    y_pred: predicted value.
+    Returns the PSNR."""
+    x = (y_pred[:,:,:,:,0])
+    y = (y_true[:,:,:,:,0])
+    vrange = K.max(y) - K.min(y)
+    psnr = 20 *  log10(vrange - (10 * log10(K.mean(K.square(y-x)))))
     return psnr
 
 def mean_squared_error_5(gauss_kernel):
@@ -195,3 +193,8 @@ def gaussian_kernel(d=16 , l=48, sig=1.):
     kernel = np.repeat(kernel[np.newaxis, :, :], d, axis=0)
     
     return kernel
+
+def timer(start,end):
+    hours, rem = divmod(end-start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    return ("{:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))

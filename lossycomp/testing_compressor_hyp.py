@@ -1,5 +1,7 @@
 """Script to test the compressor"""
-
+import sys
+sys.path.insert(0,'/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/users/donayreholtz1/lossy-ml/')
+from lossycomp.dataLoader import DataGenerator, data_preprocessing
 from lossycomp.dataLoader import DataGenerator, data_preprocessing
 from lossycomp.compress import compress
 from collections import OrderedDict, defaultdict
@@ -15,7 +17,7 @@ dask.config.set(**{'array.slicing.split_large_chunks': False})
 
 # Load the test data
 
-file = '/lsdf/kit/scc/projects/abcde/1980/*/ERA5.pl.temperature.nc'
+file = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/data/ECMWF/1980/*/temperature.nc'
 region = "globe"
 var = OrderedDict({'t': 1000})
 
@@ -24,7 +26,7 @@ z, mean, std = data_preprocessing(file, var, region)
 
 leads = dict(time = 16, longitude=1440, latitude=721, level=1)
 
-samples = 10
+samples = 1
 batch_size = 1
 
 print("Generating data...")
@@ -36,19 +38,24 @@ model_history = defaultdict(list)
 
 print("Initializing tests...")
 
-for j in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]:
-    abs_error = []
-    for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
-        compression_factor = []
-        for index in range(nb_batches):
-            # 1 Channel
-            test_batch = test_data.__getitem__(index)
-            compressed_data = compress(test_batch[0][0], i, extra_channels = False, verbose = False, method='None', mode = 'None', convs = 4, hyp = j)
-            compression_factor.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data))
-            print((test_batch[0][0][:,:,:,0].nbytes/len(compressed_data)))
+for j in range(44):
+    j = j +1
+    print(j)
+    if ((j == 31) or (j==43)):
+        pass
+    else:
+        abs_error = []
+        for i in [0.3]:
+            compression_factor = []
+            for index in range(nb_batches):
+                # 1 Channel
+                test_batch = test_data.__getitem__(index)
+                compressed_data = compress(test_batch[0][0], i, extra_channels = False, verbose = False, method='mask', mode = 'None', convs = 4, hyp = j)
+                compression_factor.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data))
+                print((test_batch[0][0][:,:,:,0].nbytes/len(compressed_data)))
             
-        abs_error.append(compression_factor)  
+            abs_error.append(compression_factor)  
                                                      
-    model_history['model_' + str(j)].append(abs_error)
+        model_history['model_' + str(j)].append(abs_error)
     
-    pickle.dump({'model': model_history}, open('results/FINAL/CF_hyp.pkl', 'wb'))
+    pickle.dump({'model': model_history}, open('results/FINAL_2/CF_hyp.pkl', 'wb'))

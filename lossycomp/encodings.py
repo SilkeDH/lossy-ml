@@ -20,7 +20,7 @@ def encode_lat(lat):
     lat = lat + 90
     lat = lat / 180
 
-    return math.sin(2 * math.pi * lat), math.cos(2 * math.pi * lat)
+    return math.sin(math.pi * lat), math.cos(math.pi * lat)
 
 def encode_hour(d):
     """Encode hour within a day from [-1, 1] using two features"""
