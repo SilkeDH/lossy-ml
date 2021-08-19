@@ -1,7 +1,7 @@
 """Script to test the compressor"""
 
 from lossycomp.dataLoader import DataGenerator, data_preprocessing
-from lossycomp.compress import compress
+from lossycomp.compress_test import compress
 from collections import OrderedDict, defaultdict
 import dask
 import pickle

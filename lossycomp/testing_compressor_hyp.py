@@ -1,9 +1,8 @@
 """Script to test the compressor"""
-import sys
-sys.path.insert(0,'/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/users/donayreholtz1/lossy-ml/')
+
 from lossycomp.dataLoader import DataGenerator, data_preprocessing
 from lossycomp.dataLoader import DataGenerator, data_preprocessing
-from lossycomp.compress import compress
+from lossycomp.compress_test import compress
 from collections import OrderedDict, defaultdict
 import dask
 import pickle
@@ -12,12 +11,13 @@ import sys
 import subprocess
 import numpy as np
 import zfpy
+from lossycomp.constants import data_path
 
 dask.config.set(**{'array.slicing.split_large_chunks': False})
 
 # Load the test data
 
-file = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/data/ECMWF/1980/*/temperature.nc'
+file = data_path + 'data/ECMWF/1980/*/temperature.nc'
 region = "globe"
 var = OrderedDict({'t': 1000})
 
@@ -50,7 +50,7 @@ for j in range(44):
             for index in range(nb_batches):
                 # 1 Channel
                 test_batch = test_data.__getitem__(index)
-                compressed_data = compress(test_batch[0][0], i, extra_channels = False, verbose = False, method='mask', mode = 'None', convs = 4, hyp = j)
+                compressed_data = compress(test_batch[0][0], i, extra_channels = False, verbose = False, method='mask', mode = 'None', convs = 4, hyp = 'hyperparameter/'+j)
                 compression_factor.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data))
                 print((test_batch[0][0][:,:,:,0].nbytes/len(compressed_data)))
             
@@ -58,4 +58,4 @@ for j in range(44):
                                                      
         model_history['model_' + str(j)].append(abs_error)
     
-    pickle.dump({'model': model_history}, open('results/FINAL_2/CF_hyp.pkl', 'wb'))
+    pickle.dump({'model': model_history}, open('results/output/CF_hyp.pkl', 'wb'))

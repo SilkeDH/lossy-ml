@@ -1,5 +1,3 @@
-import sys
-sys.path.insert(0,'/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/users/donayreholtz1/lossy-ml/')
 
 import numpy as np
 import argparse
@@ -15,7 +13,7 @@ from collections import OrderedDict, defaultdict
 from lossycomp.dataLoader import DataGenerator, data_preprocessing, split_data
 from lossycomp.utils import lr_log_reduction, correlation_5, calculate_MAE_5, mean_squared_error_5, psnr_5, timer
 from lossycomp.models import Autoencoder2
-from lossycomp.constants import Region, REGIONS
+from lossycomp.constants import Region, REGIONS, data_path
 
 import tensorflow as tf
 from tensorflow import keras
@@ -56,29 +54,33 @@ prob = float(random_state.random())
 
 # num reducing convs
 #hp1 = int(prob * (5 - 4) + 4)
-hp1 = args["convs"]
+#hp1 = args["convs"]
+hp1 = 4
 
 #num filter 
 #hp2 = int(prob * (40 - 10) + 10)
-hp2 = args["filters"]
+#hp2 = args["filters"]
+hp2 = 23
 
 # kernel size
 #hp3 = int(prob * (8 - 3) + 3)
-hp3 = args["kernel"]
+#hp3 = args["kernel"]
+hp3 = 4
 
 # lr
 #hp4 = 0.0001 * math.pow(0.001 / 0.0001, prob)
 #hp4 = args["learning"]
-hp4 = 0.001
+hp4 = 2.0597627e-05
 
 # num res blocks
 #hp5 = int(prob * (2 - 0) + 0)
-hp5 = args["residual"]
+#hp5 = args["residual"]
+hp5 = 1
 
 # L2
 #hp6 = 0.00005 * math.pow(0.0005 / 0.00005, prob)
 #hp6 = args["regularization"]
-hp6 = 0.00005
+hp6 = 1.3700601995153551e-05
 
 # Save model parameters
 parameters = {'name': args["output"], 'num_convs': hp1, 'num_filters':hp2, 'kernel_size': hp3, 'lr': hp4, 'res_blocks': hp5, 'l2':hp6, 'extra': hp8, 'gaussian': hp7, 'soil': hp9}
@@ -112,8 +114,8 @@ print('Loading Data...', flush=True)
 dask.config.set(**{'array.slicing.split_large_chunks': False})
 
 # Define data files
-file = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/data/ECMWF/1979/*/temperature.nc'
-maps = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/data/ECMWF/1979_single/*/land-sea-mask.nc'
+file = data_path + 'data/ECMWF/1979/*/temperature.nc'
+maps = data_path + 'data/ECMWF/1979_single/*/land-sea-mask.nc'
 # Define region of the globe
 region = "globe"
 
@@ -136,7 +138,7 @@ if hp9:
     z["lsm"]=(['time', 'latitude', 'longitude', 'level'], soil_d)
 
 # Split data into training and test and give number of samples.
-train, test = split_data(z, 60000, 6000, 16, 0.70)
+train, test = split_data(z, 400000, 40000, 16, 0.70)
 #train, test = split_data(z, 0.7)
 
 # Define chunk size
@@ -147,16 +149,14 @@ dg_train = DataGenerator(z, train, leads, mean, std, batch_size=100, load=True, 
 dg_test = DataGenerator(z, test, leads, mean, std, batch_size=100, load=True, coords = hp8, soil = hp9, standardize = True, shuffle = False) 
 
 
-
 # Compiling model
 checkpoint = ModelCheckpoint('results/'+ args["output"]+ '/weights/weight.hdf5', monitor='loss', verbose=0, save_best_only=False, mode='auto', save_freq=5) 
 
 # Define learning rate callback values
 learning_rate_start = hp4
-learning_rate_stop = hp4* 1e-1
-epo = 100
-epomin = 10
-epostep = 1
+learning_rate_stop = 0.00012036046 * 1e-1
+epo = 20
+epomin = 0
 lr_callback = tf.keras.callbacks.LearningRateScheduler(lr_log_reduction(learning_rate_start, learning_rate_stop, epomin = epomin, epo = epo))
 
 class SaveValues(keras.callbacks.Callback):
@@ -196,7 +196,7 @@ class SaveValues(keras.callbacks.Callback):
 model.compile(optimizer = Adam(lr=hp4), loss=mean_squared_error_5(hp7), metrics=[mean_squared_error_5(hp7), correlation_5, psnr_5])
 
 start = time.time()
-history = model.fit(dg_train, validation_data = dg_test, epochs=100,  validation_freq = 10, callbacks = [checkpoint, lr_callback,  SaveValues()] )
+history = model.fit(dg_train, validation_data = dg_test, epochs=50,  validation_freq = 10, callbacks = [checkpoint, lr_callback,  SaveValues()] )
 end = time.time()
 
 with open('results/'+args["output"]+'/model-history.pkl', 'rb') as fr:

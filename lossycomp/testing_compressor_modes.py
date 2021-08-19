@@ -1,7 +1,5 @@
 """Script to test the compressor"""
 
-import sys
-sys.path.insert(0,'/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/users/donayreholtz1/lossy-ml/')
 
 from lossycomp.dataLoader import DataGenerator, data_preprocessing, split_data
 from lossycomp.compress import compress
@@ -13,21 +11,21 @@ import sys
 import subprocess
 import numpy as np
 import zfpy
-from lossycomp.constants import Region, REGIONS
+from lossycomp.constants import Region, REGIONS, data_path
 import xarray as xr
 
 dask.config.set(**{'array.slicing.split_large_chunks': False})
 
 # Load the test data
-file = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/data/ECMWF/1980/*/temperature.nc'
-maps = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/data/ECMWF/1980_single/*/land-sea-mask.nc'
+file = data_path + 'data/ECMWF/1980/*/temperature.nc'
+maps = data_path + 'data/ECMWF/1980_single/*/land-sea-mask.nc'
 region = "globe"
 var = OrderedDict({'t': 1000})
 
 print("Calculating mean z and std...")
 z = data_preprocessing(file, var, region, stats =False)
 
-samples = 10
+samples = 50
 batch_size = 1
 
 region = REGIONS[region]
@@ -89,7 +87,7 @@ for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
         
         # Model basic convs
         data_2 = np.expand_dims(test_batch[0][0][:,:,:,0], axis=3)
-        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='mask', mode = 'None', convs = 4, hyp = 'model_basic_3' )
+        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='mask', mode = 'None', convs = 4, hyp = 'models/basic_model' )
         compression_factor_basic.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data[0]))
         latent_space_basic.append(compressed_data[1])
         error_space_basic.append(compressed_data[3])
@@ -98,7 +96,7 @@ for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
         
         # Model soil convs
         data_2 =  np.concatenate((test_batch[0][0][:,:,:,0:1], test_batch[0][0][:,:,:,5:6]),axis = 3)
-        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='mask', mode = 'soil', convs = 4, hyp = 'model_soil_3' )
+        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='mask', mode = 'soil', convs = 4, hyp = 'models/landsea_model' )
         compression_factor_soil.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data[0]))
         latent_space_soil.append(compressed_data[1])
         error_space_soil.append(compressed_data[3])
@@ -106,7 +104,7 @@ for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
         print('CF soil:', (test_batch[0][0][:,:,:,0].nbytes/len(compressed_data[0])))
         
         # Model extra convs
-        compressed_data = compress(test_batch[0][0][:,:,:, 0:5], err_threshold = i, extra_channels = True,  method='mask', mode = 'None', convs = 4, hyp = 'model_extra_3')
+        compressed_data = compress(test_batch[0][0][:,:,:, 0:5], err_threshold = i, extra_channels = True,  method='mask', mode = 'None', convs = 4, hyp = 'models/coords_model')
         compression_factor_extra.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data[0]))
         latent_space_extra.append(compressed_data[1])
         error_space_extra.append(compressed_data[3])
@@ -132,7 +130,6 @@ for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
     model_history_soil['cf_' + str(i)].append(compression_factor_soil)
 
 
-    #pickle.dump({'conv_basic': model_history_basic, 'conv_extra':model_history_extra, 'conv_gauss':model_history_gauss, 'conv_soil':model_history_soil}, open('results/FINAL_2/CF_conv_modes_2.pkl', 'wb'))
-    pickle.dump({'conv_basic': model_history_basic, 'conv_extra':model_history_extra, 'conv_soil':model_history_soil}, open('results/FINAL_2/CF_conv_modes_3.pkl', 'wb'))
-    #pickle.dump({'conv_basic': model_history_basic, 'conv_soil':model_history_soil}, open('results/FINAL_2/CF_conv_modes_soil_400_vs_model_3.pkl', 'wb'))
+    pickle.dump({'conv_basic': model_history_basic, 'conv_extra':model_history_extra, 'conv_soil':model_history_soil}, open('results/output/CF_conv_modes.pkl', 'wb'))
+
 

@@ -33,8 +33,8 @@ def single_plot(data, time, title, subtitle,  min_val, max_val, cmap = 'viridis'
     plt.ylabel("Latitude")
     plt.xlabel("Longitude")
     plt.tight_layout()
-    plt.savefig(str(title) + '.png')
-    #plt.show()
+    #plt.savefig(str(title) + '.png')
+    plt.show()
     
 def mult_plot(data, rows, columns, title, min, max, cmap = 'viridis'):
     """Multiple lat-lon plot

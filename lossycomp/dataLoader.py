@@ -309,9 +309,9 @@ class DataGenerator(keras.utils.Sequence):
     
     def __getitem__(self, i):
         'Generate one batch of data'
-        #idxs = [self.idxs[i * self.batch_size : (i + 1) * self.batch_size]]
+        idxs = [self.idxs[i * self.batch_size : (i + 1) * self.batch_size]]
         idxs2 = [self.indices[i * self.batch_size : (i + 1) * self.batch_size]]
-        idxs = [[0]]
+        #idxs = [[0]]
         idxs_1_2 = [list(zip(idxs[x],idxs2[x])) for x in range(len(idxs))]
         x = np.stack([self.calculateValues(i).data for i in idxs_1_2[0]], axis = 0)
         x = np.array(x, dtype = np.float32)
@@ -328,8 +328,8 @@ class DataGenerator(keras.utils.Sequence):
     def on_epoch_end(self):
         'Updates indexes after each epoch'
         random.seed(30)
-        #self.idxs = random.sample(range(0, self.subset_length), len(self.indices) )
-        self.idxs = random.sample(range(0, self.subset_length), 1)
+        self.idxs = random.sample(range(0, self.subset_length), len(self.indices) )
+        #self.idxs = random.sample(range(0, self.subset_length), 1)
         if self.shuffle == True:
             np.random.shuffle(self.indices)
         
@@ -373,7 +373,8 @@ def split_data(data, samples_train, samples_test, time, percentage):
     """
     np.random.seed(123)
     idx = np.arange(len(data.time)- time)
-    idx = idx[: (-1* (len(idx)%time))]
+    if len(idx)%time != 0:
+        idx = idx[: (-1* (len(idx)%time))]
     np.random.shuffle(idx)
     
     train_idx =idx[0: int(len(idx)*percentage)]

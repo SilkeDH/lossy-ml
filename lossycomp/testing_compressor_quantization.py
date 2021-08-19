@@ -1,8 +1,7 @@
 """Script to test the compressor"""
-import sys
-sys.path.insert(0,'/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/users/donayreholtz1/lossy-ml/')
+
 from lossycomp.dataLoader import DataGenerator, data_preprocessing, split_data
-from lossycomp.compress import compress
+from lossycomp.compress_test import compress
 from collections import OrderedDict, defaultdict
 import dask
 import pickle
@@ -12,11 +11,12 @@ import subprocess
 import numpy as np
 import zfpy
 from timeit import default_timer as timer
+from lossycomp.constants import data_path
 
 dask.config.set(**{'array.slicing.split_large_chunks': False})
 
 # Load the test data
-file = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/data/ECMWF/1980/*/temperature.nc'
+file = data_path + 'data/ECMWF/1980/*/temperature.nc'
 region = "globe"
 var = OrderedDict({'t': 1000})
 
@@ -62,7 +62,7 @@ for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
         # Model negative + positive errors
         data_2 = np.expand_dims(test_batch[0][0][:,:,:,0], axis=3)
         start = timer()
-        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='None', mode = 'None', convs = 4, hyp = 'model_basic_3' )
+        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='None', mode = 'None', convs = 4, hyp = 'models/4_convs' )
         end = timer()
         compression_factor_p_n_q.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data[0]))
         latent_space_p_n_q.append(compressed_data[1])
@@ -74,7 +74,7 @@ for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
         
         # Model error + mask
         start = timer()
-        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='mask', mode = 'None', convs = 4, hyp = 'model_basic_3' )
+        compressed_data = compress(data_2, err_threshold=i, extra_channels = False,  method='mask', mode = 'None', convs = 4, hyp = 'models/4_convs' )
         end = timer()
         compression_factor_e_m_q.append(test_batch[0][0][:,:,:,0].nbytes/len(compressed_data[0]))
         latent_space_e_m_q.append(compressed_data[1])
@@ -96,4 +96,4 @@ for i in [0.0001, 0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0]:
     model_history_e_m_q['error2_' + str(i)].append(mask_space_e_m_q)
     model_history_e_m_q['time_' + str(i)].append(timer_model_e_m_q)
     
-    pickle.dump({'conv_pq': model_history_p_n_q, 'conv_me':model_history_e_m_q}, open('results/FINAL_2/CF_quantization.pkl', 'wb'))
+    pickle.dump({'conv_pq': model_history_p_n_q, 'conv_me':model_history_e_m_q}, open('results/output/CF_quantization.pkl', 'wb'))

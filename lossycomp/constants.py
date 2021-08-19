@@ -18,3 +18,5 @@ REGIONS = {
     "polar_zone": Region(66.5, 90, -180, 180),
     "pacific_ocean": Region(-70, 20, -180, -90)
 }
+
+data_path = '/p/home/jusers/donayreholtz1/hdfml/MyProjects/PROJECT_haf/'

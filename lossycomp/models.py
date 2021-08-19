@@ -1,7 +1,7 @@
+import tensorflow as tf
 from tensorflow.keras.layers import Conv3D, Conv3DTranspose, ReLU, Activation, Input, Reshape, Flatten, Dense, PReLU, ReLU, Add
 from tensorflow.keras.models import Model
 from tensorflow.keras import backend as K
-import tensorflow as tf
 import numpy as np
 
 class Autoencoder:
