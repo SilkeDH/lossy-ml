@@ -10,7 +10,6 @@
 *.pdf
 *.out
 
-models/
 logs/
 slurm/
 
