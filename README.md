@@ -27,8 +27,22 @@ The compression algorithm is an Autoencoder based one. An autoencoder is a type 
 
 ## Performance
 
-The performance of the presented compression algorithm will be compared with [zfp](https://computing.llnl.gov/projects/zfp) and [fpzip](https://computing.llnl.gov/projects/fpzip). 
-zfp and fpzip are both a BSD licensed open-source library for compressed floating-point arrays that support high throughput read and write random access. However, for lossy compression, the zfp compressor often outperforms fpzip.
+The performance of the presented compression algorithm is compared with [zfp](https://computing.llnl.gov/projects/zfp) and [SZ](https://szcompressor.org/). 
+zfp and SZ both an open-source library for compressed floating-point arrays that support high throughput read and write random access. 
+
+## Usage
+An example of how to use the compression algorithm is given in the following [jupyter Notebook](https://github.com/SilkeDH/lossy-ml/blob/main/notebooks/Compression_example.ipynb).
+
+The compression algorithm consists of two functions located in compress.py and decompress.py. To compress the data just call:
+
+```python
+from lossycomp.compress import compress
+from lossycomp.decompress import decompress
+
+compressed_data = compress(data, abs_error, verbose = True)
+decompressed_data = decompress(compressed_data, verbose = True)
+```
+The compression function also outputs information about the compressed data like the achieved compression factor and the space consumption of the elements in the compressed data.
 
 ## References
 
@@ -40,11 +54,9 @@ Tensorflow
 - https://www.tensorflow.org/tutorials/generative/cvae
 - https://www.tensorflow.org/api_docs
 
-4D Convolutions
-- https://github.com/IceCubeOpenSource/TFScripts/blob/master/tfscripts/layers.py
-
-ZFP & FPZIP
+ZFP , FPZIP and SZ
 - https://zfp.readthedocs.io/en/release0.5.5/python.html
+- https://github.com/szcompressor/SZ
 - https://pypi.org/project/fpzip/
 - https://www.researchgate.net/publication/6715625_Fast_and_Efficient_Compression_of_Floating-Point_Data
 - https://www.researchgate.net/publication/264417607_Fixed-Rate_Compressed_Floating-Point_Arrays
